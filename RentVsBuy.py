@@ -18,6 +18,14 @@ annual_income = st.number_input(
     help="Total yearly household income before taxes"
 )
 
+years = st.number_input(
+    'Simulation Years:',
+    min_value=1,
+    max_value=50,
+    value=30,
+    help="Number of years to simulate the comparison"
+)
+
 # Create two columns for the layout
 col1, col2 = st.columns(2)
 
@@ -50,6 +58,26 @@ with col1:
         help="Percentage of house price as down payment"
     )
 
+    # Move payment calculations here, after all inputs are defined
+    loan_amount = house_price * (1 - down_payment/100)
+    monthly_rate = interest_rate / (100 * 12)
+    num_payments = 30 * 12  # 30 years fixed
+
+    if interest_rate == 0:
+        monthly_payment = loan_amount / num_payments
+    else:
+        monthly_payment = loan_amount * (monthly_rate * (1 + monthly_rate)**num_payments) / ((1 + monthly_rate)**num_payments - 1)
+
+    # Calculate first month's interest and principal
+    first_interest = loan_amount * monthly_rate
+    first_principal = monthly_payment - first_interest
+
+    st.markdown("### Monthly Payment Breakdown")
+    st.markdown(f"**Total Monthly Payment:** ${monthly_payment:,.2f}")
+    st.markdown(f"**First Payment Breakdown:**")
+    st.markdown(f"- Principal: ${first_principal:,.2f}")
+    st.markdown(f"- Interest: ${first_interest:,.2f}")
+
     long_term_growth = st.slider(
         "Expected Annual Property Value Growth (%)",
         min_value=0.0,
@@ -59,13 +87,13 @@ with col1:
         help="Expected annual increase in property value"
     )
 
-    maintenance_costs = st.number_input(
-        "Annual Maintenance Costs ($)",
-        min_value=0,
-        max_value=100000,
-        value=5000,
-        step=100,
-        help="Expected yearly maintenance and repairs"
+    maintenance_rate = st.slider(
+        "Annual Maintenance Rate (% of Property Value)",
+        min_value=0.0,
+        max_value=5.0,
+        value=1.0,
+        step=0.1,
+        help="Expected yearly maintenance and repairs as percentage of property value"
     )
 
     property_tax = st.slider(
@@ -89,6 +117,15 @@ with col1:
 # Rental and income inputs in right column
 with col2:
     st.header("Rental Options")
+    initial_investment = st.number_input(
+        "Initial Investment ($)",
+        min_value=0.0,
+        max_value=10000000.0,
+        value=float(house_price * down_payment/100),
+        step=1000.0,
+        help="Initial amount you could invest (equivalent to down payment if buying)"
+    )
+
     monthly_rent = st.number_input(
         "Monthly Rent ($)",
         min_value=0,
@@ -136,7 +173,7 @@ with col2:
 
 # Add a calculate button
 def calculate_purchase_scenario(house_price, down_payment_pct, interest_rate, years,
-                              property_tax_rate, maintenance_costs, insurance, appreciation_rate):
+                              property_tax_rate, maintenance_rate, insurance, appreciation_rate):
     down_payment = house_price * (down_payment_pct / 100)
     loan_amount = house_price - down_payment
     monthly_rate = interest_rate / (100 * 12)
@@ -151,6 +188,14 @@ def calculate_purchase_scenario(house_price, down_payment_pct, interest_rate, ye
     property_values = []
     equity_values = []
     remaining_loan = loan_amount
+    total_costs = []  # Track all costs
+
+    initial_wealth = -down_payment  # Start with negative down payment
+
+    yearly_details = []
+
+    total_interest_to_date = 0
+    total_principal_to_date = 0
 
     for year in range(years):
         # Calculate home value with appreciation
@@ -158,156 +203,273 @@ def calculate_purchase_scenario(house_price, down_payment_pct, interest_rate, ye
 
         # Calculate yearly costs
         yearly_tax = current_home_value * (property_tax_rate/100)
+        yearly_maintenance = current_home_value * (maintenance_rate/100)  # Calculate maintenance based on current value
         yearly_mortgage = monthly_payment * 12
-        yearly_costs = yearly_tax + maintenance_costs + insurance
 
-        # Calculate remaining loan balance
+        # Calculate interest and principal for the year
+        yearly_interest_paid = 0
+        yearly_principal_paid = 0
         for _ in range(12):
             interest_payment = remaining_loan * monthly_rate
             principal_payment = monthly_payment - interest_payment
             remaining_loan = max(0, remaining_loan - principal_payment)
+            yearly_interest_paid += interest_payment
+            yearly_principal_paid += principal_payment
 
         # Calculate equity (home value minus remaining loan)
         equity = current_home_value - remaining_loan
 
+        # Calculate total yearly costs
+        total_yearly_costs = yearly_mortgage + yearly_tax + yearly_maintenance + insurance
+
+        # Update running totals
+        total_interest_to_date += yearly_interest_paid
+        total_principal_to_date += yearly_principal_paid
+
+        yearly_details.append({
+            'Year': year + 1,
+            'Property_Value': current_home_value,
+            'Yearly_Mortgage': yearly_mortgage,
+            'Property_Tax': yearly_tax,
+            'Maintenance': yearly_maintenance,  # Use the calculated maintenance
+            'Insurance': insurance,
+            'Interest_Paid': yearly_interest_paid,
+            'Principal_Paid': yearly_principal_paid,
+            'Remaining_Loan': remaining_loan,
+            'Equity': equity,
+            'Yearly_Costs': total_yearly_costs,
+            'Total_Interest_To_Date': total_interest_to_date,
+            'Total_Principal_To_Date': total_principal_to_date
+        })
+
         property_values.append(current_home_value)
         equity_values.append(equity)
 
-    return property_values, equity_values
+    return property_values, equity_values, yearly_details
 
 def calculate_rental_scenario(monthly_rent, monthly_investment, years, rent_increase,
-                            investment_return, rent_insurance):
+                            investment_return, rent_insurance, initial_investment=0):
     wealth_values = []
-    investment_portfolio = 0
+    investment_portfolio = initial_investment  # Start with initial investment
+    yearly_details = []
 
     for year in range(years):
         # Calculate yearly costs
         yearly_rent = monthly_rent * 12 * (1 + rent_increase/100)**year
         yearly_investment = monthly_investment * 12
+        yearly_costs = yearly_rent + rent_insurance
 
         # Grow existing investments
+        investment_returns = investment_portfolio * (investment_return/100)
         investment_portfolio = investment_portfolio * (1 + investment_return/100)
         # Add new investments
         investment_portfolio += yearly_investment
 
-        # Calculate net wealth (investments minus yearly rental costs)
-        current_wealth = investment_portfolio - (yearly_rent + rent_insurance)
+        # Net wealth is just the investment portfolio
+        current_wealth = investment_portfolio
+
         wealth_values.append(current_wealth)
 
-    return wealth_values
+        yearly_details.append({
+            'Year': year + 1,
+            'Yearly_Rent': yearly_rent,
+            'Rent_Insurance': rent_insurance,
+            'Investment_Portfolio': investment_portfolio,
+            'Investment_Returns': investment_returns,
+            'New_Investments': yearly_investment,
+            'Net_Wealth': current_wealth,
+            'Yearly_Costs': yearly_costs
+        })
+
+    return wealth_values, yearly_details
 
 if st.button("Calculate Comparison", type="primary"):
-    years = 30  # You can make this adjustable if desired
+    years = 30
 
-    # Calculate purchase scenario
-    property_values, equity_values = calculate_purchase_scenario(
+    # Store input parameters
+    purchase_params = {
+        'House_Price': house_price,
+        'Down_Payment_Percent': down_payment,
+        'Interest_Rate': interest_rate,
+        'Property_Tax_Rate': property_tax,
+        'Maintenance_Rate': maintenance_rate,
+        'Insurance': insurance,
+        'Property_Growth_Rate': long_term_growth
+    }
+
+    rental_params = {
+        'Monthly_Rent': monthly_rent,
+        'Initial_Investment': initial_investment,
+        'Monthly_Investment': monthly_investment,
+        'Investment_Return': investment_return,
+        'Rent_Insurance': rent_insurance,
+        'Rent_Increase_Rate': rent_increase
+    }
+
+    # Calculate scenarios
+    property_values, equity_values, purchase_details = calculate_purchase_scenario(
         house_price=house_price,
         down_payment_pct=down_payment,
         interest_rate=interest_rate,
         years=years,
         property_tax_rate=property_tax,
-        maintenance_costs=maintenance_costs,
+        maintenance_rate=maintenance_rate,
         insurance=insurance,
         appreciation_rate=long_term_growth
     )
 
-    # Calculate rental scenario
-    rental_wealth = calculate_rental_scenario(
+    rental_wealth, rental_details = calculate_rental_scenario(
         monthly_rent=monthly_rent,
         monthly_investment=monthly_investment,
         years=years,
         rent_increase=rent_increase,
         investment_return=investment_return,
-        rent_insurance=rent_insurance
+        rent_insurance=rent_insurance,
+        initial_investment=initial_investment
     )
+
+    # Create DataFrame for logging
+    df = pd.DataFrame({
+        'Year': range(1, years + 1),
+        'Property_Value': property_values,
+        'Home_Equity': equity_values,
+        'Rental_Wealth': rental_wealth
+    })
+
+    # Add rental details
+    rental_df = pd.DataFrame(rental_details)
+
+    # Save parameters to separate CSV
+    params_df = pd.DataFrame({
+        'Parameter': ['Years'] + list(purchase_params.keys()) + list(rental_params.keys()),
+        'Value': [years] + list(purchase_params.values()) + list(rental_params.values())
+    })
+
+    # Save to CSV files
+    params_df.to_csv('input_parameters.csv', index=False)
+    df.to_csv('comparison_results.csv', index=False)
+    rental_df.to_csv('rental_detailed_analysis.csv', index=False)
+    purchase_df = pd.DataFrame(purchase_details)
+    purchase_df.to_csv('purchase_detailed_analysis.csv', index=False)
+
+    # Display success message
+    st.success("Results have been saved to CSV files: 'input_parameters.csv', 'comparison_results.csv', 'rental_detailed_analysis.csv', and 'purchase_detailed_analysis.csv'")
 
     # Create the figure
     fig = go.Figure()
+
+    # Calculate cumulative costs for each year
+    cumulative_purchase_costs = []
+    cumulative_rental_costs = []
+    running_purchase_cost = 0
+    running_rental_cost = 0
+
+    for year in range(years):
+        # Purchase costs for this year
+        yearly_purchase_cost = (
+            purchase_df.iloc[year]['Yearly_Mortgage'] +
+            purchase_df.iloc[year]['Property_Tax'] +
+            purchase_df.iloc[year]['Maintenance'] +
+            purchase_df.iloc[year]['Insurance']
+        )
+        running_purchase_cost += yearly_purchase_cost
+        cumulative_purchase_costs.append(running_purchase_cost)
+
+        # Rental costs for this year
+        yearly_rental_cost = (
+            rental_df.iloc[year]['Yearly_Rent'] +
+            rental_df.iloc[year]['Rent_Insurance']
+        )
+        running_rental_cost += yearly_rental_cost
+        cumulative_rental_costs.append(running_rental_cost)
+
+    # Calculate net worth for each scenario
+    purchase_net_worth = [
+        property_values[i] - cumulative_purchase_costs[i]
+        for i in range(years)
+    ]
+
+    rental_net_worth = [
+        rental_df.iloc[i]['Investment_Portfolio'] - cumulative_rental_costs[i]
+        for i in range(years)
+    ]
 
     # Add property value line
     fig.add_trace(go.Scatter(
         x=list(range(years)),
         y=property_values,
         name='Property Value',
+        line=dict(color='lightblue', dash='dash')
+    ))
+
+    # Add purchase scenario net worth
+    fig.add_trace(go.Scatter(
+        x=list(range(years)),
+        y=purchase_net_worth,
+        name='Purchase Net Worth',
         line=dict(color='blue')
     ))
 
-    # Add equity line
+    # Add rental scenario net worth
     fig.add_trace(go.Scatter(
         x=list(range(years)),
-        y=equity_values,
-        name='Home Equity',
-        line=dict(color='green')
-    ))
-
-    # Add rental wealth line
-    fig.add_trace(go.Scatter(
-        x=list(range(years)),
-        y=rental_wealth,
-        name='Rental Scenario Wealth',
+        y=rental_net_worth,
+        name='Rental Net Worth',
         line=dict(color='red')
     ))
 
     fig.update_layout(
-        title='Property Value and Home Equity Over Time',
+        title='Net Worth Comparison Over Time (Including All Costs)',
         xaxis_title='Years',
         yaxis_title='Value ($)',
         height=600,
         showlegend=True
     )
 
+    # After creating purchase_df and rental_df, add these calculations
+    total_interest_paid = purchase_df['Interest_Paid'].sum()
+    total_principal_paid = purchase_df['Principal_Paid'].sum()
+    total_property_tax = purchase_df['Property_Tax'].sum()
+    total_maintenance = purchase_df['Maintenance'].sum()
+    total_home_insurance = insurance * years
+
+    total_purchase_costs = (total_interest_paid + total_principal_paid +
+                          total_property_tax + total_maintenance +
+                          total_home_insurance)
+
+    total_rent_paid = rental_df['Yearly_Rent'].sum()
+    total_rent_insurance = rental_df['Rent_Insurance'].sum()
+    total_rental_costs = total_rent_paid + total_rent_insurance
+    final_investment_value = rental_df['Investment_Portfolio'].iloc[-1]
+    total_investment_returns = rental_df['Investment_Returns'].sum()
+    total_new_investments = rental_df['New_Investments'].sum()
+
+    # Display the graph
     st.plotly_chart(fig, use_container_width=True)
 
-def calculate_net_worth(monthly_savings, years, interest_rate=0.07):
-    net_worth = []
-    annual_savings = monthly_savings * 12
-    current_worth = 0
+    # Add a new section for total payments
+    st.header("Total Payments Over 30 Years")
+    col_totals1, col_totals2 = st.columns(2)
 
-    for year in range(years):
-        current_worth = (current_worth * (1 + interest_rate)) + annual_savings
-        net_worth.append(current_worth)
+    with col_totals1:
+        st.markdown("### Purchase Scenario")
+        st.markdown(f"**Total Interest Paid:** ${total_interest_paid:,.2f}")
+        st.markdown(f"**Total Principal Paid:** ${total_principal_paid:,.2f}")
+        st.markdown(f"**Total Property Tax:** ${total_property_tax:,.2f}")
+        st.markdown(f"**Total Maintenance:** ${total_maintenance:,.2f}")
+        st.markdown(f"**Total Home Insurance:** ${total_home_insurance:,.2f}")
+        st.markdown(f"**Total Cost:** ${total_purchase_costs:,.2f}")
 
-    return net_worth
+    with col_totals2:
+        st.markdown("### Rental Scenario")
+        st.markdown(f"**Total Rent Paid:** ${total_rent_paid:,.2f}")
+        st.markdown(f"**Total Rent Insurance:** ${total_rent_insurance:,.2f}")
+        st.markdown(f"**Total Cost:** ${total_rental_costs:,.2f}")
+        st.markdown("#### Investment Portfolio")
+        st.markdown(f"**Initial Investment:** ${initial_investment:,.2f}")
+        st.markdown(f"**Total New Investments:** ${total_new_investments:,.2f}")
+        st.markdown(f"**Total Investment Returns:** ${total_investment_returns:,.2f}")
+        st.markdown(f"**Final Portfolio Value:** ${final_investment_value:,.2f}")
 
-def update_graph(data, years):
-    if not data or not years:
-        return {}
-
-    df = pd.DataFrame(data)
-
-    # Calculate monthly savings for each column
-    monthly_savings = {
-        'Low': float(df['Low'].iloc[-1]),
-        'Medium': float(df['Medium'].iloc[-1]),
-        'High': float(df['High'].iloc[-1])
-    }
-
-    # Create the figure using plotly
-    fig = go.Figure()
-
-    # Calculate net worth over time for each scenario
-    for scenario, savings in monthly_savings.items():
-        net_worth = calculate_net_worth(savings, years)
-        fig.add_trace(go.Scatter(
-            x=list(range(years)),
-            y=net_worth,
-            name=f'{scenario} Income Scenario',
-            mode='lines'
-        ))
-
-    fig.update_layout(
-        title='Projected Net Worth Over Time',
-        xaxis_title='Years',
-        yaxis_title='Net Worth ($)',
-        height=500
-    )
-
-    return fig
-
-# Replace the Dash components with Streamlit components
-years = st.number_input('Simulation Years:', min_value=1, max_value=50, value=30)
-
-# When you have your data ready, call the function and display the plot
-if 'your_data' in locals():  # Replace with your actual data condition
-    fig = update_graph(your_data, years)
-    st.plotly_chart(fig)
+    total_rent = sum(rental_df['Yearly_Rent'])
+    print(f"Total rent paid over 30 years: ${total_rent:,.2f}")
