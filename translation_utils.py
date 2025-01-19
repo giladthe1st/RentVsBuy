@@ -1,7 +1,8 @@
 import streamlit as st
 from googletrans import Translator
-from typing import Dict, Any
+from typing import Dict, Any, List
 from functools import lru_cache
+import time
 
 # Create a single translator instance
 translator = Translator()
@@ -17,9 +18,83 @@ def get_translations() -> Dict[str, Dict[str, str]]:
         'ru': {'name': 'Русский', 'code': 'ru'}
     }
 
+def get_all_translatable_text() -> List[str]:
+    """Get all text that needs translation."""
+    return [
+        # Main titles and headers
+        "Rent vs. Buy Calculator",
+        "Compare the financial implications of renting versus buying a home",
+        "Purchase Options",
+        "Rental Options",
+        "Investment Options",
+        "Results",
+        
+        # Input labels
+        "Annual Household Income ($)",
+        "Simulation Years:",
+        "House Price ($)",
+        "Mortgage Interest Rate (%)",
+        "Down Payment (%)",
+        "Property Tax Rate (%)",
+        "Annual Maintenance (%)",
+        "Annual Insurance ($)",
+        "Property Appreciation Rate (%)",
+        "Monthly Rent ($)",
+        "Annual Rent Increase (%)",
+        "Renter's Insurance ($)",
+        "Monthly Investment ($)",
+        "Investment Return Rate (%)",
+        
+        # Help texts
+        "Total yearly household income before taxes",
+        "Number of years to simulate the comparison",
+        "Enter the total price of the house you're considering",
+        "Annual mortgage interest rate",
+        "Percentage of house price as down payment",
+        "Annual property tax as percentage of house value",
+        "Annual maintenance and repairs as percentage of house value",
+        "Annual homeowner's insurance cost",
+        "Expected annual property value appreciation",
+        "Monthly rental payment",
+        "Expected annual rent increase",
+        "Annual renter's insurance cost",
+        "Monthly investment amount",
+        "Expected annual return on investments",
+        
+        # Chart labels
+        "Year",
+        "Value ($)",
+        "Net Worth Comparison",
+        "Purchase Scenario",
+        "Rental Scenario",
+    ]
+
+def initialize_translations():
+    """Pre-translate all text at startup."""
+    texts = get_all_translatable_text()
+    languages = [lang['code'] for lang in get_translations().values() if lang['code'] != 'en']
+    
+    with st.spinner('Initializing translations...'):
+        for lang in languages:
+            for text in texts:
+                # Create cache key
+                cache_key = f"{text}:{lang}"
+                if cache_key not in translation_cache:
+                    try:
+                        # Add small delay to avoid rate limiting
+                        time.sleep(0.1)
+                        result = translator.translate(text, dest=lang)
+                        translation_cache[cache_key] = result.text
+                    except Exception:
+                        translation_cache[cache_key] = text
+
 def create_language_selector():
     """Create a language selector in the sidebar."""
     translations = get_translations()
+    
+    # Initialize translations if not already done
+    if not translation_cache:
+        initialize_translations()
     
     # Create a container in the top right
     with st.container():
@@ -55,7 +130,7 @@ def translate_text(text: str, target_lang: str) -> str:
     if cache_key in translation_cache:
         return translation_cache[cache_key]
     
-    # Translate and cache result
+    # If not in cache, translate and cache result
     translated = cached_translate(text, target_lang)
     translation_cache[cache_key] = translated
     return translated
