@@ -484,7 +484,7 @@ def show():
 
         # Calculate net worth for each scenario
         purchase_net_worth = [
-            property_values[i] - cumulative_purchase_costs[i]
+            property_values[i] - cumulative_purchase_costs[i] + purchase_df.iloc[i]['Investment_Portfolio']
             for i in range(years)
         ]
 
