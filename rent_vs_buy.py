@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
+from translation_utils import create_language_selector, translate_text, translate_number_input, translate_slider
 
 def calculate_purchase_scenario(house_price, down_payment_pct, interest_rate, years,
                               property_tax_rate, maintenance_rate, insurance, appreciation_rate,
@@ -127,26 +128,31 @@ def calculate_rental_scenario(monthly_rent, monthly_investment, years, rent_incr
     return wealth_values, yearly_details
 
 def show():
+    # Add language selector
+    current_lang = create_language_selector()
+    
     # Remove st.set_page_config() since it's in main.py
-    st.title("Rent vs. Buy Calculator")
-    st.write("Compare the financial implications of renting versus buying a home")
+    st.title(translate_text("Rent vs. Buy Calculator", current_lang))
+    st.write(translate_text("Compare the financial implications of renting versus buying a home", current_lang))
 
     # Common inputs
-    annual_income = st.number_input(
-        "Annual Household Income ($)",
+    annual_income = translate_number_input(
+        translate_text("Annual Household Income ($)", current_lang),
+        current_lang,
         min_value=0,
         max_value=1000000,
         value=100000,
         step=1000,
-        help="Total yearly household income before taxes"
+        help=translate_text("Total yearly household income before taxes", current_lang)
     )
 
-    years = st.number_input(
-        'Simulation Years:',
+    years = translate_number_input(
+        translate_text('Simulation Years:', current_lang),
+        current_lang,
         min_value=1,
         max_value=50,
         value=30,
-        help="Number of years to simulate the comparison"
+        help=translate_text("Number of years to simulate the comparison", current_lang)
     )
 
     # Create two columns for the layout
@@ -154,31 +160,34 @@ def show():
 
     # Purchase-related inputs in left column
     with col1:
-        st.header("Purchase Options")
-        house_price = st.number_input(
-            "House Price ($)",
+        st.header(translate_text("Purchase Options", current_lang))
+        house_price = translate_number_input(
+            translate_text("House Price ($)", current_lang),
+            current_lang,
             min_value=0,
             max_value=10000000,
             value=500000,
             step=1000,
-            help="Enter the total price of the house you're considering"
+            help=translate_text("Enter the total price of the house you're considering", current_lang)
         )
 
-        interest_rate = st.slider(
-            "Mortgage Interest Rate (%)",
+        interest_rate = translate_slider(
+            translate_text("Mortgage Interest Rate (%)", current_lang),
+            current_lang,
             min_value=0.0,
             max_value=15.0,
             value=6.5,
             step=0.1,
-            help="Annual mortgage interest rate"
+            help=translate_text("Annual mortgage interest rate", current_lang)
         )
 
-        down_payment = st.slider(
-            "Down Payment (%)",
+        down_payment = translate_slider(
+            translate_text("Down Payment (%)", current_lang),
+            current_lang,
             min_value=0,
             max_value=100,
             value=20,
-            help="Percentage of house price as down payment"
+            help=translate_text("Percentage of house price as down payment", current_lang)
         )
 
         # Move payment calculations here, after all inputs are defined
@@ -195,183 +204,200 @@ def show():
         first_interest = loan_amount * monthly_rate
         first_principal = monthly_payment - first_interest
 
-        st.markdown("### Monthly Payment Breakdown")
-        st.markdown(f"**Total Monthly Payment:** ${monthly_payment:,.2f}")
-        st.markdown(f"**First Payment Breakdown:**")
-        st.markdown(f"- Principal: ${first_principal:,.2f}")
-        st.markdown(f"- Interest: ${first_interest:,.2f}")
+        st.markdown(translate_text("### Monthly Payment Breakdown", current_lang))
+        st.markdown(translate_text(f"**Total Monthly Payment:** ${monthly_payment:,.2f}", current_lang))
+        st.markdown(translate_text(f"**First Payment Breakdown:**", current_lang))
+        st.markdown(translate_text(f"- Principal: ${first_principal:,.2f}", current_lang))
+        st.markdown(translate_text(f"- Interest: ${first_interest:,.2f}", current_lang))
 
-        long_term_growth = st.slider(
-            "Expected Annual Property Value Growth (%)",
+        long_term_growth = translate_slider(
+            translate_text("Expected Annual Property Value Growth (%)", current_lang),
+            current_lang,
             min_value=0.0,
             max_value=10.0,
             value=3.0,
             step=0.1,
-            help="Expected annual increase in property value"
+            help=translate_text("Expected annual increase in property value", current_lang)
         )
 
-        maintenance_rate = st.slider(
-            "Annual Maintenance Rate (% of Property Value)",
+        maintenance_rate = translate_slider(
+            translate_text("Annual Maintenance Rate (% of Property Value)", current_lang),
+            current_lang,
             min_value=0.0,
             max_value=5.0,
             value=1.0,
             step=0.1,
-            help="Expected yearly maintenance and repairs as percentage of property value"
+            help=translate_text("Expected yearly maintenance and repairs as percentage of property value", current_lang)
         )
 
-        property_tax = st.slider(
-            "Property Tax Rate (%)",
+        property_tax = translate_slider(
+            translate_text("Property Tax Rate (%)", current_lang),
+            current_lang,
             min_value=0.0,
             max_value=5.0,
             value=1.2,
             step=0.1,
-            help="Annual property tax as percentage of home value"
+            help=translate_text("Annual property tax as percentage of home value", current_lang)
         )
 
-        insurance = st.number_input(
-            "Annual Home Insurance ($)",
+        insurance = translate_number_input(
+            translate_text("Annual Home Insurance ($)", current_lang),
+            current_lang,
             min_value=0,
             max_value=50000,
             value=2400,
             step=100,
-            help="Yearly home insurance premium"
+            help=translate_text("Yearly home insurance premium", current_lang)
         )
 
-        monthly_investment_purchase = st.number_input(
-            "Monthly Investment ($)",
+        monthly_investment_purchase = translate_number_input(
+            translate_text("Monthly Investment ($)", current_lang),
+            current_lang,
             min_value=0,
             max_value=50000,
             value=0,
             step=100,
-            help="Amount you plan to invest monthly while owning",
+            help=translate_text("Amount you plan to invest monthly while owning", current_lang),
             key="purchase_investment"  # unique key to differentiate from rental investment
         )
 
     # Rental and income inputs in right column
     with col2:
-        st.header("Rental Options")
-        initial_investment = st.number_input(
-            "Initial Investment ($)",
+        st.header(translate_text("Rental Options", current_lang))
+        initial_investment = translate_number_input(
+            translate_text("Initial Investment ($)", current_lang),
+            current_lang,
             min_value=0.0,
             max_value=10000000.0,
             value=float(house_price * down_payment/100),
             step=1000.0,
-            help="Initial amount you could invest (equivalent to down payment if buying)"
+            help=translate_text("Initial amount you could invest (equivalent to down payment if buying)", current_lang)
         )
 
-        monthly_rent = st.number_input(
-            "Monthly Rent ($)",
+        monthly_rent = translate_number_input(
+            translate_text("Monthly Rent ($)", current_lang),
+            current_lang,
             min_value=0,
             max_value=50000,
             value=2500,
             step=100,
-            help="Monthly rental payment"
+            help=translate_text("Monthly rental payment", current_lang)
         )
 
-        monthly_investment = st.number_input(
-            "Monthly Investment ($)",
+        monthly_investment = translate_number_input(
+            translate_text("Monthly Investment ($)", current_lang),
+            current_lang,
             min_value=0,
             max_value=50000,
             value=0,
             step=100,
-            help="Amount you plan to invest monthly while renting",
+            help=translate_text("Amount you plan to invest monthly while renting", current_lang),
             key="rental_investment"  # unique key
         )
 
-        investment_return = st.slider(
-            "Expected Annual Investment Return (%)",
+        investment_return = translate_slider(
+            translate_text("Expected Annual Investment Return (%)", current_lang),
+            current_lang,
             min_value=0.0,
             max_value=20.0,
             value=7.0,
             step=0.1,
-            help="Expected annual return on investments"
+            help=translate_text("Expected annual return on investments", current_lang)
         )
 
-        rent_insurance = st.number_input(
-            "Annual Rental Insurance ($)",
+        rent_insurance = translate_number_input(
+            translate_text("Annual Rental Insurance ($)", current_lang),
+            current_lang,
             min_value=0,
             max_value=10000,
             value=300,
             step=50,
-            help="Yearly rental insurance premium"
+            help=translate_text("Yearly rental insurance premium", current_lang)
         )
 
-        rent_increase = st.slider(
-            "Expected Annual Rent Increase (%)",
+        rent_increase = translate_slider(
+            translate_text("Expected Annual Rent Increase (%)", current_lang),
+            current_lang,
             min_value=0.0,
             max_value=10.0,
             value=3.0,
             step=0.1,
-            help="Expected yearly increase in rent"
+            help=translate_text("Expected yearly increase in rent", current_lang)
         )
 
     # New utilities/expenses section in right column
     with col3:
-        st.header("Monthly Utilities & Expenses")
+        st.header(translate_text("Monthly Utilities & Expenses", current_lang))
 
-        st.markdown("### Purchase Scenario")
-        electricity_purchase = st.number_input(
-            "Electricity ($)",
+        st.markdown(translate_text("### Purchase Scenario", current_lang))
+        electricity_purchase = translate_number_input(
+            translate_text("Electricity ($)", current_lang),
+            current_lang,
             min_value=0,
             max_value=1000,
             value=150,
             step=10,
-            help="Monthly electricity costs for owned home",
+            help=translate_text("Monthly electricity costs for owned home", current_lang),
             key="electricity_purchase"
         )
 
-        water_purchase = st.number_input(
-            "Water ($)",
+        water_purchase = translate_number_input(
+            translate_text("Water ($)", current_lang),
+            current_lang,
             min_value=0,
             max_value=500,
             value=50,
             step=10,
-            help="Monthly water costs for owned home",
+            help=translate_text("Monthly water costs for owned home", current_lang),
             key="water_purchase"
         )
 
-        other_expenses_purchase = st.number_input(
-            "Other Monthly Expenses ($)",
+        other_expenses_purchase = translate_number_input(
+            translate_text("Other Monthly Expenses ($)", current_lang),
+            current_lang,
             min_value=0,
             max_value=1000,
             value=100,
             step=10,
-            help="Other monthly housing-related expenses for owned home",
+            help=translate_text("Other monthly housing-related expenses for owned home", current_lang),
             key="other_purchase"
         )
 
-        st.markdown("### Rental Scenario")
-        electricity_rental = st.number_input(
-            "Electricity ($)",
+        st.markdown(translate_text("### Rental Scenario", current_lang))
+        electricity_rental = translate_number_input(
+            translate_text("Electricity ($)", current_lang),
+            current_lang,
             min_value=0,
             max_value=1000,
             value=150,
             step=10,
-            help="Monthly electricity costs for rental (0 if included in rent)",
+            help=translate_text("Monthly electricity costs for rental (0 if included in rent)", current_lang),
             key="electricity_rental"
         )
 
-        water_rental = st.number_input(
-            "Water ($)",
+        water_rental = translate_number_input(
+            translate_text("Water ($)", current_lang),
+            current_lang,
             min_value=0,
             max_value=500,
             value=50,
             step=10,
-            help="Monthly water costs for rental (0 if included in rent)",
+            help=translate_text("Monthly water costs for rental (0 if included in rent)", current_lang),
             key="water_rental"
         )
 
-        other_expenses_rental = st.number_input(
-            "Other Monthly Expenses ($)",
+        other_expenses_rental = translate_number_input(
+            translate_text("Other Monthly Expenses ($)", current_lang),
+            current_lang,
             min_value=0,
             max_value=1000,
             value=100,
             step=10,
-            help="Other monthly housing-related expenses for rental",
+            help=translate_text("Other monthly housing-related expenses for rental", current_lang),
             key="other_rental"
         )
 
-    if st.button("Calculate Comparison", type="primary"):
+    if st.button(translate_text("Calculate Comparison", current_lang), type="primary"):
         # Calculate monthly utilities for each scenario
         total_monthly_utilities_purchase = (electricity_purchase + water_purchase +
                                            other_expenses_purchase)
@@ -452,7 +478,7 @@ def show():
         purchase_df.to_csv('purchase_detailed_analysis.csv', index=False)
 
         # Display success message
-        st.success("Results have been saved to CSV files: 'input_parameters.csv', 'comparison_results.csv', 'rental_detailed_analysis.csv', and 'purchase_detailed_analysis.csv'")
+        st.success(translate_text("Results have been saved to CSV files: 'input_parameters.csv', 'comparison_results.csv', 'rental_detailed_analysis.csv', and 'purchase_detailed_analysis.csv'", current_lang))
 
         # Create the figure
         fig = go.Figure()
@@ -497,7 +523,7 @@ def show():
         fig.add_trace(go.Scatter(
             x=list(range(years)),
             y=property_values,
-            name='Property Value',
+            name=translate_text('Property Value', current_lang),
             line=dict(color='lightblue', dash='dash')
         ))
 
@@ -505,7 +531,7 @@ def show():
         fig.add_trace(go.Scatter(
             x=list(range(years)),
             y=purchase_net_worth,
-            name='Purchase Net Worth',
+            name=translate_text('Purchase Net Worth', current_lang),
             line=dict(color='blue')
         ))
 
@@ -513,14 +539,14 @@ def show():
         fig.add_trace(go.Scatter(
             x=list(range(years)),
             y=rental_net_worth,
-            name='Rental Net Worth',
+            name=translate_text('Rental Net Worth', current_lang),
             line=dict(color='red')
         ))
 
         fig.update_layout(
-            title=f'Net Worth Comparison Over {years} Years (Including All Costs)',
-            xaxis_title='Years',
-            yaxis_title='Value ($)',
+            title=translate_text(f'Net Worth Comparison Over {years} Years (Including All Costs)', current_lang),
+            xaxis_title=translate_text('Years', current_lang),
+            yaxis_title=translate_text('Value ($)', current_lang),
             height=600,
             showlegend=True
         )
@@ -549,34 +575,34 @@ def show():
         st.plotly_chart(fig, use_container_width=True)
 
         # Update the header to use the actual years value
-        st.header(f"Total Payments Over {years} Years")
+        st.header(translate_text(f"Total Payments Over {years} Years", current_lang))
         col_totals1, col_totals2 = st.columns(2)
 
         with col_totals1:
-            st.markdown("### Purchase Scenario")
-            st.markdown(f"**Total Interest Paid:** ${total_interest_paid:,.2f}")
-            st.markdown(f"**Total Principal Paid:** ${total_principal_paid:,.2f}")
-            st.markdown(f"**Total Property Tax:** ${total_property_tax:,.2f}")
-            st.markdown(f"**Total Maintenance:** ${total_maintenance:,.2f}")
-            st.markdown(f"**Total Home Insurance:** ${total_home_insurance:,.2f}")
-            st.markdown(f"**Total Utilities & Other:** ${total_utilities_purchase:,.2f}")
-            st.markdown(f"**Total Cost:** ${total_purchase_costs:,.2f}")
-            st.markdown("#### Investment Portfolio")
-            st.markdown(f"**Total New Investments:** ${purchase_df['New_Investments'].sum():,.2f}")
-            st.markdown(f"**Total Investment Returns:** ${purchase_df['Investment_Returns'].sum():,.2f}")
-            st.markdown(f"**Final Portfolio Value:** ${purchase_df['Investment_Portfolio'].iloc[-1]:,.2f}")
+            st.markdown(translate_text("### Purchase Scenario", current_lang))
+            st.markdown(translate_text(f"**Total Interest Paid:** ${total_interest_paid:,.2f}", current_lang))
+            st.markdown(translate_text(f"**Total Principal Paid:** ${total_principal_paid:,.2f}", current_lang))
+            st.markdown(translate_text(f"**Total Property Tax:** ${total_property_tax:,.2f}", current_lang))
+            st.markdown(translate_text(f"**Total Maintenance:** ${total_maintenance:,.2f}", current_lang))
+            st.markdown(translate_text(f"**Total Home Insurance:** ${total_home_insurance:,.2f}", current_lang))
+            st.markdown(translate_text(f"**Total Utilities & Other:** ${total_utilities_purchase:,.2f}", current_lang))
+            st.markdown(translate_text(f"**Total Cost:** ${total_purchase_costs:,.2f}", current_lang))
+            st.markdown(translate_text("#### Investment Portfolio", current_lang))
+            st.markdown(translate_text(f"**Total New Investments:** ${purchase_df['New_Investments'].sum():,.2f}", current_lang))
+            st.markdown(translate_text(f"**Total Investment Returns:** ${purchase_df['Investment_Returns'].sum():,.2f}", current_lang))
+            st.markdown(translate_text(f"**Final Portfolio Value:** ${purchase_df['Investment_Portfolio'].iloc[-1]:,.2f}", current_lang))
 
         with col_totals2:
-            st.markdown("### Rental Scenario")
-            st.markdown(f"**Total Rent Paid:** ${total_rent_paid:,.2f}")
-            st.markdown(f"**Total Rent Insurance:** ${total_rent_insurance:,.2f}")
-            st.markdown(f"**Total Utilities & Other:** ${total_utilities_rental:,.2f}")
-            st.markdown(f"**Total Cost:** ${total_rental_costs:,.2f}")
-            st.markdown("#### Investment Portfolio")
-            st.markdown(f"**Initial Investment:** ${initial_investment:,.2f}")
-            st.markdown(f"**Total New Investments:** ${total_new_investments:,.2f}")
-            st.markdown(f"**Total Investment Returns:** ${total_investment_returns:,.2f}")
-            st.markdown(f"**Final Portfolio Value:** ${final_investment_value:,.2f}")
+            st.markdown(translate_text("### Rental Scenario", current_lang))
+            st.markdown(translate_text(f"**Total Rent Paid:** ${total_rent_paid:,.2f}", current_lang))
+            st.markdown(translate_text(f"**Total Rent Insurance:** ${total_rent_insurance:,.2f}", current_lang))
+            st.markdown(translate_text(f"**Total Utilities & Other:** ${total_utilities_rental:,.2f}", current_lang))
+            st.markdown(translate_text(f"**Total Cost:** ${total_rental_costs:,.2f}", current_lang))
+            st.markdown(translate_text("#### Investment Portfolio", current_lang))
+            st.markdown(translate_text(f"**Initial Investment:** ${initial_investment:,.2f}", current_lang))
+            st.markdown(translate_text(f"**Total New Investments:** ${total_new_investments:,.2f}", current_lang))
+            st.markdown(translate_text(f"**Total Investment Returns:** ${total_investment_returns:,.2f}", current_lang))
+            st.markdown(translate_text(f"**Final Portfolio Value:** ${final_investment_value:,.2f}", current_lang))
 
 if __name__ == "__main__":
     show()
