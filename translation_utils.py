@@ -1,6 +1,13 @@
 import streamlit as st
 from googletrans import Translator
 from typing import Dict, Any
+from functools import lru_cache
+
+# Create a single translator instance
+translator = Translator()
+
+# Cache for translations
+translation_cache: Dict[str, Dict[str, str]] = {}
 
 def get_translations() -> Dict[str, Dict[str, str]]:
     """Get translations for all supported languages."""
@@ -27,18 +34,31 @@ def create_language_selector():
     
     return current_lang
 
-def translate_text(text: str, target_lang: str) -> str:
-    """Translate text to target language."""
-    if target_lang == 'en':
-        return text
-        
+@lru_cache(maxsize=1000)
+def cached_translate(text: str, target_lang: str) -> str:
+    """Cached translation function."""
     try:
-        translator = Translator()
         result = translator.translate(text, dest=target_lang)
         return result.text
-    except Exception as e:
-        st.warning(f"Translation error: {str(e)}")
+    except Exception:
         return text
+
+def translate_text(text: str, target_lang: str) -> str:
+    """Translate text to target language using cache."""
+    if target_lang == 'en':
+        return text
+    
+    # Create cache key
+    cache_key = f"{text}:{target_lang}"
+    
+    # Check cache first
+    if cache_key in translation_cache:
+        return translation_cache[cache_key]
+    
+    # Translate and cache result
+    translated = cached_translate(text, target_lang)
+    translation_cache[cache_key] = translated
+    return translated
 
 def translate_number_input(text: str, target_lang: str, **kwargs) -> Any:
     """Create a translated number input."""
