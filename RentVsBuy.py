@@ -27,7 +27,7 @@ years = st.number_input(
 )
 
 # Create two columns for the layout
-col1, col2 = st.columns(2)
+col1, col2, col3 = st.columns(3)
 
 # Purchase-related inputs in left column
 with col1:
@@ -61,7 +61,7 @@ with col1:
     # Move payment calculations here, after all inputs are defined
     loan_amount = house_price * (1 - down_payment/100)
     monthly_rate = interest_rate / (100 * 12)
-    num_payments = 30 * 12  # 30 years fixed
+    num_payments = years * 12  # Use years variable instead of hardcoded 30
 
     if interest_rate == 0:
         monthly_payment = loan_amount / num_payments
@@ -114,6 +114,16 @@ with col1:
         help="Yearly home insurance premium"
     )
 
+    monthly_investment_purchase = st.number_input(
+        "Monthly Investment ($)",
+        min_value=0,
+        max_value=50000,
+        value=0,
+        step=100,
+        help="Amount you plan to invest monthly while owning",
+        key="purchase_investment"  # unique key to differentiate from rental investment
+    )
+
 # Rental and income inputs in right column
 with col2:
     st.header("Rental Options")
@@ -141,7 +151,8 @@ with col2:
         max_value=50000,
         value=0,
         step=100,
-        help="Amount you plan to invest monthly while renting"
+        help="Amount you plan to invest monthly while renting",
+        key="rental_investment"  # unique key
     )
 
     investment_return = st.slider(
@@ -171,13 +182,83 @@ with col2:
         help="Expected yearly increase in rent"
     )
 
+# New utilities/expenses section in right column
+with col3:
+    st.header("Monthly Utilities & Expenses")
+
+    st.markdown("### Purchase Scenario")
+    electricity_purchase = st.number_input(
+        "Electricity ($)",
+        min_value=0,
+        max_value=1000,
+        value=150,
+        step=10,
+        help="Monthly electricity costs for owned home",
+        key="electricity_purchase"
+    )
+
+    water_purchase = st.number_input(
+        "Water ($)",
+        min_value=0,
+        max_value=500,
+        value=50,
+        step=10,
+        help="Monthly water costs for owned home",
+        key="water_purchase"
+    )
+
+    other_expenses_purchase = st.number_input(
+        "Other Monthly Expenses ($)",
+        min_value=0,
+        max_value=1000,
+        value=100,
+        step=10,
+        help="Other monthly housing-related expenses for owned home",
+        key="other_purchase"
+    )
+
+    st.markdown("### Rental Scenario")
+    electricity_rental = st.number_input(
+        "Electricity ($)",
+        min_value=0,
+        max_value=1000,
+        value=150,
+        step=10,
+        help="Monthly electricity costs for rental (0 if included in rent)",
+        key="electricity_rental"
+    )
+
+    water_rental = st.number_input(
+        "Water ($)",
+        min_value=0,
+        max_value=500,
+        value=50,
+        step=10,
+        help="Monthly water costs for rental (0 if included in rent)",
+        key="water_rental"
+    )
+
+    other_expenses_rental = st.number_input(
+        "Other Monthly Expenses ($)",
+        min_value=0,
+        max_value=1000,
+        value=100,
+        step=10,
+        help="Other monthly housing-related expenses for rental",
+        key="other_rental"
+    )
+
 # Add a calculate button
 def calculate_purchase_scenario(house_price, down_payment_pct, interest_rate, years,
-                              property_tax_rate, maintenance_rate, insurance, appreciation_rate):
+                              property_tax_rate, maintenance_rate, insurance, appreciation_rate,
+                              monthly_investment, investment_return):
     down_payment = house_price * (down_payment_pct / 100)
     loan_amount = house_price - down_payment
     monthly_rate = interest_rate / (100 * 12)
     num_payments = years * 12
+
+    # Initialize investment portfolio
+    investment_portfolio = 0
 
     # Calculate monthly mortgage payment (P&I)
     if interest_rate == 0:
@@ -226,6 +307,11 @@ def calculate_purchase_scenario(house_price, down_payment_pct, interest_rate, ye
         total_interest_to_date += yearly_interest_paid
         total_principal_to_date += yearly_principal_paid
 
+        # Calculate investment returns
+        yearly_investment = monthly_investment * 12
+        investment_returns = investment_portfolio * (investment_return/100)
+        investment_portfolio = investment_portfolio * (1 + investment_return/100) + yearly_investment
+
         yearly_details.append({
             'Year': year + 1,
             'Property_Value': current_home_value,
@@ -239,7 +325,10 @@ def calculate_purchase_scenario(house_price, down_payment_pct, interest_rate, ye
             'Equity': equity,
             'Yearly_Costs': total_yearly_costs,
             'Total_Interest_To_Date': total_interest_to_date,
-            'Total_Principal_To_Date': total_principal_to_date
+            'Total_Principal_To_Date': total_principal_to_date,
+            'Investment_Portfolio': investment_portfolio,
+            'Investment_Returns': investment_returns,
+            'New_Investments': yearly_investment,
         })
 
         property_values.append(current_home_value)
@@ -284,7 +373,14 @@ def calculate_rental_scenario(monthly_rent, monthly_investment, years, rent_incr
     return wealth_values, yearly_details
 
 if st.button("Calculate Comparison", type="primary"):
-    years = 30
+    # Calculate monthly utilities for each scenario
+    total_monthly_utilities_purchase = (electricity_purchase + water_purchase +
+                                       other_expenses_purchase)
+    yearly_utilities_purchase = total_monthly_utilities_purchase * 12
+
+    total_monthly_utilities_rental = (electricity_rental + water_rental +
+                                     other_expenses_rental)
+    yearly_utilities_rental = total_monthly_utilities_rental * 12
 
     # Store input parameters
     purchase_params = {
@@ -294,7 +390,9 @@ if st.button("Calculate Comparison", type="primary"):
         'Property_Tax_Rate': property_tax,
         'Maintenance_Rate': maintenance_rate,
         'Insurance': insurance,
-        'Property_Growth_Rate': long_term_growth
+        'Property_Growth_Rate': long_term_growth,
+        'Monthly_Investment': monthly_investment_purchase,
+        'Investment_Return': investment_return
     }
 
     rental_params = {
@@ -315,7 +413,9 @@ if st.button("Calculate Comparison", type="primary"):
         property_tax_rate=property_tax,
         maintenance_rate=maintenance_rate,
         insurance=insurance,
-        appreciation_rate=long_term_growth
+        appreciation_rate=long_term_growth,
+        monthly_investment=monthly_investment_purchase,
+        investment_return=investment_return
     )
 
     rental_wealth, rental_details = calculate_rental_scenario(
@@ -419,7 +519,7 @@ if st.button("Calculate Comparison", type="primary"):
     ))
 
     fig.update_layout(
-        title='Net Worth Comparison Over Time (Including All Costs)',
+        title=f'Net Worth Comparison Over {years} Years (Including All Costs)',
         xaxis_title='Years',
         yaxis_title='Value ($)',
         height=600,
@@ -432,14 +532,16 @@ if st.button("Calculate Comparison", type="primary"):
     total_property_tax = purchase_df['Property_Tax'].sum()
     total_maintenance = purchase_df['Maintenance'].sum()
     total_home_insurance = insurance * years
+    total_utilities_purchase = yearly_utilities_purchase * years
+    total_utilities_rental = yearly_utilities_rental * years
 
     total_purchase_costs = (total_interest_paid + total_principal_paid +
                           total_property_tax + total_maintenance +
-                          total_home_insurance)
+                          total_home_insurance + total_utilities_purchase)
 
     total_rent_paid = rental_df['Yearly_Rent'].sum()
     total_rent_insurance = rental_df['Rent_Insurance'].sum()
-    total_rental_costs = total_rent_paid + total_rent_insurance
+    total_rental_costs = total_rent_paid + total_rent_insurance + total_utilities_rental
     final_investment_value = rental_df['Investment_Portfolio'].iloc[-1]
     total_investment_returns = rental_df['Investment_Returns'].sum()
     total_new_investments = rental_df['New_Investments'].sum()
@@ -447,8 +549,8 @@ if st.button("Calculate Comparison", type="primary"):
     # Display the graph
     st.plotly_chart(fig, use_container_width=True)
 
-    # Add a new section for total payments
-    st.header("Total Payments Over 30 Years")
+    # Update the header to use the actual years value
+    st.header(f"Total Payments Over {years} Years")
     col_totals1, col_totals2 = st.columns(2)
 
     with col_totals1:
@@ -458,18 +560,21 @@ if st.button("Calculate Comparison", type="primary"):
         st.markdown(f"**Total Property Tax:** ${total_property_tax:,.2f}")
         st.markdown(f"**Total Maintenance:** ${total_maintenance:,.2f}")
         st.markdown(f"**Total Home Insurance:** ${total_home_insurance:,.2f}")
+        st.markdown(f"**Total Utilities & Other:** ${total_utilities_purchase:,.2f}")
         st.markdown(f"**Total Cost:** ${total_purchase_costs:,.2f}")
+        st.markdown("#### Investment Portfolio")
+        st.markdown(f"**Total New Investments:** ${purchase_df['New_Investments'].sum():,.2f}")
+        st.markdown(f"**Total Investment Returns:** ${purchase_df['Investment_Returns'].sum():,.2f}")
+        st.markdown(f"**Final Portfolio Value:** ${purchase_df['Investment_Portfolio'].iloc[-1]:,.2f}")
 
     with col_totals2:
         st.markdown("### Rental Scenario")
         st.markdown(f"**Total Rent Paid:** ${total_rent_paid:,.2f}")
         st.markdown(f"**Total Rent Insurance:** ${total_rent_insurance:,.2f}")
+        st.markdown(f"**Total Utilities & Other:** ${total_utilities_rental:,.2f}")
         st.markdown(f"**Total Cost:** ${total_rental_costs:,.2f}")
         st.markdown("#### Investment Portfolio")
         st.markdown(f"**Initial Investment:** ${initial_investment:,.2f}")
         st.markdown(f"**Total New Investments:** ${total_new_investments:,.2f}")
         st.markdown(f"**Total Investment Returns:** ${total_investment_returns:,.2f}")
         st.markdown(f"**Final Portfolio Value:** ${final_investment_value:,.2f}")
-
-    total_rent = sum(rental_df['Yearly_Rent'])
-    print(f"Total rent paid over 30 years: ${total_rent:,.2f}")
