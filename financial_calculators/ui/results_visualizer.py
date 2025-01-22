@@ -96,65 +96,152 @@ class ResultsVisualizer:
     ):
         """Displays summary statistics for both scenarios"""
         
-        st.header(translate_text(f"Total Payments Over {years} Years", current_lang))
-        
-        # Calculate purchase scenario totals
+        # Calculate totals for purchase scenario
         total_interest_paid = sum(year.interest_paid for year in purchase_details)
         total_principal_paid = sum(year.principal_paid for year in purchase_details)
         total_property_tax = sum(year.property_tax for year in purchase_details)
         total_maintenance = sum(year.maintenance for year in purchase_details)
         total_home_insurance = sum(year.insurance for year in purchase_details)
         total_utilities_purchase = sum(year.yearly_utilities for year in purchase_details)
-        
         total_purchase_costs = (total_interest_paid + total_principal_paid +
                               total_property_tax + total_maintenance +
                               total_home_insurance + total_utilities_purchase)
 
-        # Calculate rental scenario totals
+        # Calculate totals for rental scenario
         total_rent_paid = sum(year.yearly_rent for year in rental_details)
         total_rent_insurance = sum(year.rent_insurance for year in rental_details)
         total_utilities_rental = sum(year.yearly_utilities for year in rental_details)
         total_rental_costs = total_rent_paid + total_rent_insurance + total_utilities_rental
 
-        # Investment calculations
-        final_investment_value_rental = rental_details[-1].investment_portfolio
-        total_investment_returns_rental = sum(year.investment_returns for year in rental_details)
-        total_new_investments_rental = sum(year.new_investments for year in rental_details)
+        # Calculate final positions
+        purchase_final_position = (
+            purchase_details[-1].equity +  # Home equity
+            purchase_details[-1].investment_portfolio -  # Investment portfolio
+            total_purchase_costs  # Total costs
+        )
+        
+        rental_final_position = (
+            rental_details[-1].investment_portfolio -  # Investment portfolio
+            total_rental_costs  # Total costs
+        )
 
-        final_investment_value_purchase = purchase_details[-1].investment_portfolio
-        total_investment_returns_purchase = sum(year.investment_returns for year in purchase_details)
-        total_new_investments_purchase = sum(year.new_investments for year in purchase_details)
+        # Display the net positions with color coding
+        st.header(translate_text("Final Net Position", current_lang))
+        
+        # Display calculation breakdown
+        st.markdown(translate_text("### Calculation Breakdown", current_lang))
+        
+        col_calc1, col_calc2 = st.columns(2)
+        
+        with col_calc1:
+            st.markdown(translate_text("#### Purchase Scenario", current_lang))
+            st.markdown(translate_text("**Assets:**", current_lang))
+            
+            # Home Equity Section
+            st.markdown(f"+ Home Equity: ${purchase_details[-1].equity:,.2f}")
+            with st.expander("View Home Equity Details"):
+                st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;• Principal Paid: ${total_principal_paid:,.2f}")
+                st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;• Property Appreciation: ${(purchase_details[-1].property_value - purchase_details[0].property_value):,.2f}")
+            
+            # Investment Portfolio Section
+            st.markdown(f"+ Investment Portfolio: ${purchase_details[-1].investment_portfolio:,.2f}")
+            with st.expander("View Investment Portfolio Details"):
+                st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;• Initial Investment: $0.00")
+                st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;• Total New Investments: ${sum(year.new_investments for year in purchase_details):,.2f}")
+                st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;• Total Investment Returns: ${sum(year.investment_returns for year in purchase_details):,.2f}")
+            
+            st.markdown(translate_text("**Costs:**", current_lang))
+            st.markdown(f"- Total Interest: ${total_interest_paid:,.2f}")
+            st.markdown(f"- Total Property Tax: ${total_property_tax:,.2f}")
+            st.markdown(f"- Total Maintenance: ${total_maintenance:,.2f}")
+            st.markdown(f"- Total Insurance: ${total_home_insurance:,.2f}")
+            
+            # Utilities Section
+            st.markdown(f"- Total Utilities: ${total_utilities_purchase:,.2f}")
+            with st.expander("View Utilities Breakdown"):
+                st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;• Electricity: ${sum(year.yearly_utilities * 0.4 for year in purchase_details):,.2f}")
+                st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;• Gas: ${sum(year.yearly_utilities * 0.3 for year in purchase_details):,.2f}")
+                st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;• Water: ${sum(year.yearly_utilities * 0.3 for year in purchase_details):,.2f}")
+            
+            st.markdown("___")
+            st.markdown(f"""
+            {translate_text("Total Costs Calculation", current_lang)}:
+            ```
+            {total_interest_paid:,.2f} (Interest)
+            + {total_property_tax:,.2f} (Property Tax)
+            + {total_maintenance:,.2f} (Maintenance)
+            + {total_home_insurance:,.2f} (Insurance)
+            + {total_utilities_purchase:,.2f} (Utilities)
+            = {total_purchase_costs:,.2f} (Total Costs)
+            ```
+            """)
+            st.markdown("___")
 
-        # Display summaries in two columns
-        col_totals1, col_totals2 = st.columns(2)
+            color = "green" if purchase_final_position > 0 else "red"
+            st.markdown(f'<p style="color: {color}; font-size: 20px;"><strong>{translate_text("Net Position", current_lang)}: ${purchase_final_position:,.2f}</strong></p>', unsafe_allow_html=True)
+            st.markdown(f"""
+            {translate_text("Final Position Calculation", current_lang)}:
+            ```
+            {purchase_details[-1].equity:,.2f} (Equity)
+            + {purchase_details[-1].investment_portfolio:,.2f} (Investments)
+            - {total_purchase_costs:,.2f} (Total Costs)
+            = {purchase_final_position:,.2f}
+            ```
+            """)
 
-        with col_totals1:
-            st.markdown(translate_text("### Purchase Scenario", current_lang))
-            st.markdown(translate_text(f"**Total Interest Paid:** ${total_interest_paid:,.2f}", current_lang))
-            st.markdown(translate_text(f"**Total Principal Paid:** ${total_principal_paid:,.2f}", current_lang))
-            st.markdown(translate_text(f"**Total Property Tax:** ${total_property_tax:,.2f}", current_lang))
-            st.markdown(translate_text(f"**Total Maintenance:** ${total_maintenance:,.2f}", current_lang))
-            st.markdown(translate_text(f"**Total Home Insurance:** ${total_home_insurance:,.2f}", current_lang))
-            st.markdown(translate_text(f"**Total Utilities:** ${total_utilities_purchase:,.2f}", current_lang))
-            st.markdown(translate_text(f"**Total Cost:** ${total_purchase_costs:,.2f}", current_lang))
-            st.markdown(translate_text("#### Investment Portfolio", current_lang))
-            st.markdown(translate_text(f"**Total New Investments:** ${total_new_investments_purchase:,.2f}", current_lang))
-            st.markdown(translate_text(f"**Total Investment Returns:** ${total_investment_returns_purchase:,.2f}", current_lang))
-            st.markdown(translate_text(f"**Final Portfolio Value:** ${final_investment_value_purchase:,.2f}", current_lang))
-            st.markdown(translate_text(f"**Final Property Value:** ${purchase_details[-1].property_value:,.2f}", current_lang))
-            st.markdown(translate_text(f"**Final Home Equity:** ${purchase_details[-1].equity:,.2f}", current_lang))
+        with col_calc2:
+            st.markdown(translate_text("#### Rental Scenario", current_lang))
+            st.markdown(translate_text("**Assets:**", current_lang))
+            
+            # Investment Portfolio Section
+            st.markdown(f"+ Investment Portfolio: ${rental_details[-1].investment_portfolio:,.2f}")
+            with st.expander("View Investment Portfolio Details"):
+                st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;• Initial Investment: ${initial_investment:,.2f}")
+                st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;• Total New Investments: ${sum(year.new_investments for year in rental_details):,.2f}")
+                st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;• Total Investment Returns: ${sum(year.investment_returns for year in rental_details):,.2f}")
+            
+            st.markdown(translate_text("**Costs:**", current_lang))
+            st.markdown(f"- Total Rent: ${total_rent_paid:,.2f}")
+            st.markdown(f"- Total Insurance: ${total_rent_insurance:,.2f}")
+            
+            # Utilities Section
+            st.markdown(f"- Total Utilities: ${total_utilities_rental:,.2f}")
+            with st.expander("View Utilities Breakdown"):
+                st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;• Electricity: ${sum(year.yearly_utilities * 0.4 for year in rental_details):,.2f}")
+                st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;• Gas: ${sum(year.yearly_utilities * 0.3 for year in rental_details):,.2f}")
+                st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;• Water: ${sum(year.yearly_utilities * 0.3 for year in rental_details):,.2f}")
+            
+            st.markdown("___")
+            st.markdown(f"""
+            {translate_text("Total Costs Calculation", current_lang)}:
+            ```
+            {total_rent_paid:,.2f} (Rent)
+            + {total_rent_insurance:,.2f} (Insurance)
+            + {total_utilities_rental:,.2f} (Utilities)
+            = {total_rental_costs:,.2f} (Total Costs)
+            ```
+            """)
+            st.markdown("___")
 
-        with col_totals2:
-            st.markdown(translate_text("### Rental Scenario", current_lang))
-            st.markdown(translate_text(f"**Total Rent Paid:** ${total_rent_paid:,.2f}", current_lang))
-            st.markdown(translate_text(f"**Total Rent Insurance:** ${total_rent_insurance:,.2f}", current_lang))
-            st.markdown(translate_text(f"**Total Utilities:** ${total_utilities_rental:,.2f}", current_lang))
-            st.markdown(translate_text(f"**Total Cost:** ${total_rental_costs:,.2f}", current_lang))
-            st.markdown(translate_text("#### Investment Portfolio", current_lang))
-            st.markdown(translate_text(f"**Initial Investment:** ${initial_investment:,.2f}", current_lang))
-            st.markdown(translate_text(f"**Total New Investments:** ${total_new_investments_rental:,.2f}", current_lang))
-            st.markdown(translate_text(f"**Total Investment Returns:** ${total_investment_returns_rental:,.2f}", current_lang))
-            st.markdown(translate_text(f"**Final Portfolio Value:** ${final_investment_value_rental:,.2f}", current_lang))
+            color = "green" if rental_final_position > 0 else "red"
+            st.markdown(f'<p style="color: {color}; font-size: 20px;"><strong>{translate_text("Net Position", current_lang)}: ${rental_final_position:,.2f}</strong></p>', unsafe_allow_html=True)
+            st.markdown(f"""
+            {translate_text("Final Position Calculation", current_lang)}:
+            ```
+            {rental_details[-1].investment_portfolio:,.2f} (Investments)
+            - {total_rental_costs:,.2f} (Total Costs)
+            = {rental_final_position:,.2f}
+            ```
+            """)
+        
+        # Compare the scenarios
+        difference = purchase_final_position - rental_final_position
+        better_option = translate_text("Buying", current_lang) if difference > 0 else translate_text("Renting", current_lang)
+        color = "green" if difference > 0 else "red"
+        
+        st.markdown("---")
+        st.markdown(translate_text("### Comparison", current_lang))
+        st.markdown(f'<p style="font-size: 18px;">{translate_text("Better financial position by", current_lang)} <span style="color: {color}; font-weight: bold;">${abs(difference):,.2f}</span> {translate_text("with", current_lang)} <span style="color: {color}; font-weight: bold;">{better_option}</span></p>', unsafe_allow_html=True)
 
     @staticmethod
     def save_results_to_csv(
