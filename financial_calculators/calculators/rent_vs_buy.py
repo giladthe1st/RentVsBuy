@@ -1,0 +1,141 @@
+import os
+import streamlit as st
+from ui.input_handler import InputHandler
+from ui.results_visualizer import ResultsVisualizer
+from utils.financial_calculator import FinancialCalculator
+from utils.constants import DEFAULT_VALUES
+from translation_utils import create_language_selector, translate_text, translate_number_input
+
+def show():
+    """Main function to display the rent vs buy calculator interface."""
+    
+    # Check if we're in deployment environment
+    is_deployed = os.getenv('DEPLOYMENT_ENV') == 'production'
+    
+    # Initialize language only if deployed
+    current_lang = 'en'  # Default to English
+    if is_deployed:
+        current_lang = create_language_selector()
+    
+    st.title(translate_text("Rent vs. Buy Calculator", current_lang))
+    st.write(translate_text("Compare the financial implications of renting versus buying a home", current_lang))
+
+    # Get simulation years input
+    years = translate_number_input(
+        translate_text('Simulation Years:', current_lang),
+        current_lang,
+        min_value=1,
+        max_value=50,
+        value=DEFAULT_VALUES['years'],
+        help=translate_text("Number of years to simulate the comparison", current_lang)
+    )
+    st.session_state['simulation_years'] = years
+
+    # Get annual income input
+    annual_income = translate_number_input(
+        translate_text("Annual Household Income ($)", current_lang),
+        current_lang,
+        min_value=0,
+        max_value=1000000,
+        value=100000,
+        step=1000,
+        help=translate_text("Total yearly household income before taxes", current_lang)
+    )
+
+    # Create two columns for the layout
+    col1, col2 = st.columns(2)
+
+    # Purchase inputs in left column
+    with col1:
+        purchase_params = InputHandler.create_purchase_inputs(current_lang)
+
+        # Calculate and display initial mortgage details
+        loan_amount = purchase_params.house_price * (1 - purchase_params.down_payment_pct/100)
+        monthly_rate = purchase_params.interest_rate / (100 * 12)
+        num_payments = purchase_params.years * 12
+
+        if purchase_params.interest_rate == 0:
+            monthly_payment = loan_amount / num_payments
+        else:
+            monthly_payment = loan_amount * (monthly_rate * (1 + monthly_rate)**num_payments) / ((1 + monthly_rate)**num_payments - 1)
+
+        # Calculate first month's interest and principal
+        first_interest = loan_amount * monthly_rate
+        first_principal = monthly_payment - first_interest
+
+        # Display monthly payment breakdown visualization
+        ResultsVisualizer.create_monthly_payment_chart(
+            monthly_payment,
+            first_principal,
+            first_interest,
+            current_lang
+        )
+
+    # Rental inputs in middle column
+    with col2:
+        # Set initial investment based on purchase down payment
+        st.session_state['initial_investment'] = purchase_params.house_price * (purchase_params.down_payment_pct/100)
+        rental_params = InputHandler.create_rental_inputs(current_lang)
+
+    # Calculate comparison when button is clicked
+    if st.button(translate_text("Calculate Comparison", current_lang), type="primary"):
+        # Initialize calculator
+        calculator = FinancialCalculator()
+        
+        # Calculate scenarios
+        property_values, equity_values, purchase_details = calculator.calculate_purchase_scenario(
+            purchase_params
+        )
+        
+        rental_wealth, rental_details = calculator.calculate_rental_scenario(
+            rental_params
+        )
+
+        # Display results
+        ResultsVisualizer.create_comparison_chart(
+            purchase_details,
+            rental_details,
+            years,
+            current_lang
+        )
+        
+        ResultsVisualizer.display_summary_statistics(
+            purchase_details,
+            rental_details,
+            years,
+            rental_params.initial_investment,
+            current_lang
+        )
+
+        # Save results to CSV
+        purchase_params_dict = {
+            'House_Price': purchase_params.house_price,
+            'Down_Payment_Percent': purchase_params.down_payment_pct,
+            'Interest_Rate': purchase_params.interest_rate,
+            'Property_Tax_Rate': purchase_params.property_tax_rate,
+            'Maintenance_Rate': purchase_params.maintenance_rate,
+            'Insurance': purchase_params.insurance,
+            'Property_Growth_Rate': purchase_params.appreciation_rate,
+            'Monthly_Investment': purchase_params.monthly_investment,
+            'Investment_Return': purchase_params.investment_return
+        }
+
+        rental_params_dict = {
+            'Monthly_Rent': rental_params.monthly_rent,
+            'Initial_Investment': rental_params.initial_investment,
+            'Monthly_Investment': rental_params.monthly_investment,
+            'Investment_Return': rental_params.investment_return,
+            'Rent_Insurance': rental_params.rent_insurance,
+            'Rent_Increase_Rate': rental_params.rent_inflation
+        }
+
+        ResultsVisualizer.save_results_to_csv(
+            purchase_details,
+            rental_details,
+            years,
+            purchase_params_dict,
+            rental_params_dict
+        )
+
+if __name__ == "__main__":
+    show()
