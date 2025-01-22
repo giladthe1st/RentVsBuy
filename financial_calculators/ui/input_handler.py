@@ -153,6 +153,13 @@ class InputHandler:
     def create_rental_inputs(current_lang: str = 'en') -> RentalScenarioParams:
         st.header(translate_text("Rental Options", current_lang))
 
+        # Display Initial Investment (from down payment)
+        initial_investment = st.session_state.get('initial_investment', 0)
+        st.markdown(translate_text("**Initial Investment**", current_lang))
+        st.markdown(f"${initial_investment:,.2f}")
+        st.markdown(translate_text("*(Equal to down payment amount)*", current_lang))
+        st.markdown("---")
+
         col_rent1, col_rent_inflation = st.columns(2)
         with col_rent1:
             monthly_rent = translate_number_input(
