@@ -1,0 +1,17 @@
+Parameter,Value
+Years,30.0
+House_Price,500000.0
+Down_Payment_Percent,20.0
+Interest_Rate,6.5
+Property_Tax_Rate,1.2
+Maintenance_Rate,1.0
+Insurance,2400.0
+Property_Growth_Rate,5.0
+Monthly_Investment,0.0
+Investment_Return,7.0
+Monthly_Rent,2500.0
+Initial_Investment,100000.0
+Monthly_Investment,0.0
+Investment_Return,7.0
+Rent_Insurance,300.0
+Rent_Increase_Rate,3.0
