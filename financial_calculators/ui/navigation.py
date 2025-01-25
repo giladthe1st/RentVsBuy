@@ -49,16 +49,18 @@ class Navigation:
         
         for col, item in zip(cols, self.nav_items):
             with col:
-                # Create button with icon if available
                 button_label = f"{item.icon} {translate_text(item.label, self.current_lang)}" if item.icon else translate_text(item.label, self.current_lang)
+                is_selected = st.session_state.current_calculator == item.id
                 
                 if st.button(
                     button_label,
+                    key=f"nav_button_{item.id}",
                     help=translate_text(item.help_text, self.current_lang) if item.help_text else None,
-                    use_container_width=True,
-                    type="primary" if st.session_state.current_calculator == item.id else "secondary"
+                    type="primary" if is_selected else "secondary",
+                    use_container_width=True
                 ):
                     st.session_state.current_calculator = item.id
+                    st.rerun()
         
         return st.session_state.current_calculator
 
