@@ -7,9 +7,12 @@ class PropertyDetails:
     property_type: str
     purchase_price: float
     down_payment_pct: float
+    down_payment_amount: float
+    loan_amount: float
     interest_rate: float
     loan_years: int
-    holding_period: int
+    monthly_payment: float
+    closing_costs: float
 
 @dataclass
 class IncomeDetails:
@@ -17,6 +20,7 @@ class IncomeDetails:
     monthly_rent: float
     other_income: float
     vacancy_rate: float
+    effective_income: float
     annual_rent_increase: float
 
 @dataclass
@@ -25,18 +29,23 @@ class ExpenseDetails:
     property_tax: float
     insurance: float
     utilities: float
-    management_fee: float
-    maintenance_pct: float
+    mgmt_fee: float
+    maintenance: float
     hoa_fees: float
+    monthly_operating_expenses: float
+    property_tax_inflation: float
+    insurance_inflation: float
+    utilities_inflation: float
+    mgmt_fee_inflation: float
+    hoa_inflation: float
 
 @dataclass
 class MortgageDetails:
     """Data model for mortgage calculation results."""
-    loan_amount: float
     monthly_payment: float
-    interest_payment: float
-    principal_payment: float
-    remaining_balance: float
+    annual_payment: float
+    total_payments: float
+    total_interest: float
 
 @dataclass
 class AppreciationScenario:
@@ -44,6 +53,9 @@ class AppreciationScenario:
     conservative_rate: float
     moderate_rate: float
     optimistic_rate: float
+    conservative_value: float
+    moderate_value: float
+    optimistic_value: float
 
 @dataclass
 class CashFlowProjection:
@@ -66,13 +78,16 @@ class InvestmentMetrics:
     conservative_irr: float
     moderate_irr: float
     optimistic_irr: float
+    total_investment: float  # Down payment + closing costs
 
 @dataclass
 class EquityMetrics:
     """Data model for equity-related metrics."""
-    down_payment: float
-    total_equity_buildup: float
-    yearly_equity: List[float]
+    initial_equity: float
+    current_equity: float
+    equity_buildup: float
+    appreciation: float
+    principal_paydown: float
 
 @dataclass
 class InvestmentAnalysis:
@@ -100,7 +115,7 @@ class InvestmentAnalysis:
         return [
             self.property_details.purchase_price * 
             (1 + self.appreciation_scenario.conservative_rate/100) ** year
-            for year in range(self.property_details.holding_period + 1)
+            for year in range(self.property_details.loan_years + 1)
         ]
     
     def get_moderate_value_projection(self) -> List[float]:
@@ -108,7 +123,7 @@ class InvestmentAnalysis:
         return [
             self.property_details.purchase_price * 
             (1 + self.appreciation_scenario.moderate_rate/100) ** year
-            for year in range(self.property_details.holding_period + 1)
+            for year in range(self.property_details.loan_years + 1)
         ]
     
     def get_optimistic_value_projection(self) -> List[float]:
@@ -116,5 +131,5 @@ class InvestmentAnalysis:
         return [
             self.property_details.purchase_price * 
             (1 + self.appreciation_scenario.optimistic_rate/100) ** year
-            for year in range(self.property_details.holding_period + 1)
+            for year in range(self.property_details.loan_years + 1)
         ]

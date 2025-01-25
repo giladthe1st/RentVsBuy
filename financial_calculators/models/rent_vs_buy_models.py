@@ -21,6 +21,7 @@ class YearlyPurchaseDetails:
     investment_returns: float
     new_investments: float
     yearly_utilities: float
+    closing_costs: float = 0.0
 
 @dataclass
 class YearlyRentalDetails:
