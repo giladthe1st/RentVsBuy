@@ -4,7 +4,7 @@ import streamlit as st
 from typing import Tuple
 from models.data_models import PurchaseScenarioParams, RentalScenarioParams, Utilities, UtilityData
 from utils.constants import DEFAULT_VALUES
-from translation_utils import translate_text, translate_number_input, translate_slider
+from translation_utils import translate_text, translate_number_input
 
 class InputHandler:
     @staticmethod
@@ -22,7 +22,7 @@ class InputHandler:
             key="purchase_house_price"
         )
 
-        interest_rate = translate_slider(
+        interest_rate = translate_number_input(
             translate_text("Mortgage Interest Rate (%)", current_lang),
             current_lang,
             min_value=0.0,
@@ -33,7 +33,7 @@ class InputHandler:
             key="purchase_interest_rate"
         )
 
-        down_payment = translate_slider(
+        down_payment = translate_number_input(
             translate_text("Down Payment (%)", current_lang),
             current_lang,
             min_value=0,
@@ -43,7 +43,7 @@ class InputHandler:
             key="purchase_down_payment"
         )
 
-        property_tax = translate_slider(
+        property_tax = translate_number_input(
             translate_text("Property Tax Rate (%)", current_lang),
             current_lang,
             min_value=0.0,
@@ -54,7 +54,7 @@ class InputHandler:
             key="purchase_property_tax"
         )
 
-        maintenance_rate = translate_slider(
+        maintenance_rate = translate_number_input(
             translate_text("Annual Maintenance (%)", current_lang),
             current_lang,
             min_value=0.0,
@@ -65,7 +65,7 @@ class InputHandler:
             key="purchase_maintenance_rate"
         )
 
-        long_term_growth = translate_slider(
+        long_term_growth = translate_number_input(
             translate_text("Property Appreciation Rate (%)", current_lang),
             current_lang,
             min_value=0.0,
@@ -88,7 +88,7 @@ class InputHandler:
                 key="purchase_insurance"
             )
         with col_homeins_inflation:
-            insurance_inflation = translate_slider(
+            insurance_inflation = translate_number_input(
                 translate_text("Annual Increase (%)", current_lang),
                 current_lang,
                 min_value=0.0,
@@ -110,7 +110,7 @@ class InputHandler:
                 key="purchase_monthly_investment"
             )
         with col_inv_purchase_inflation:
-            investment_increase_rate = translate_slider(
+            investment_increase_rate = translate_number_input(
                 translate_text("Annual Increase (%)", current_lang),
                 current_lang,
                 min_value=0.0,
@@ -120,7 +120,7 @@ class InputHandler:
                 key="purchase_investment_increase"
             )
 
-        investment_return = translate_slider(
+        investment_return = translate_number_input(
             translate_text("Investment Return Rate (%)", current_lang),
             current_lang,
             min_value=0.0,
@@ -172,7 +172,7 @@ class InputHandler:
                 key="rental_monthly_rent"
             )
         with col_rent_inflation:
-            rent_inflation = translate_slider(
+            rent_inflation = translate_number_input(
                 translate_text("Annual Increase (%)", current_lang),
                 current_lang,
                 min_value=0.0,
@@ -194,7 +194,7 @@ class InputHandler:
                 key="rental_insurance"
             )
         with col_rent_ins_inflation:
-            rent_insurance_inflation = translate_slider(
+            rent_insurance_inflation = translate_number_input(
                 translate_text("Annual Increase (%)", current_lang),
                 current_lang,
                 min_value=0.0,
@@ -216,7 +216,7 @@ class InputHandler:
                 key="rental_monthly_investment"
             )
         with col_inv_rental_inflation:
-            investment_increase_rate = translate_slider(
+            investment_increase_rate = translate_number_input(
                 translate_text("Annual Increase (%)", current_lang),
                 current_lang,
                 min_value=0.0,
@@ -226,7 +226,7 @@ class InputHandler:
                 key="rental_investment_increase"
             )
 
-        investment_return = translate_slider(
+        investment_return = translate_number_input(
             translate_text("Investment Return Rate (%)", current_lang),
             current_lang,
             min_value=0.0,
@@ -269,7 +269,7 @@ class InputHandler:
                 key=f"{scenario_type.lower()}_electricity"
             )
         with col_inflation1:
-            electricity_inflation = translate_slider(
+            electricity_inflation = translate_number_input(
                 translate_text("Annual Increase (%)", current_lang),
                 current_lang,
                 min_value=0.0,
@@ -292,7 +292,7 @@ class InputHandler:
                 key=f"{scenario_type.lower()}_water"
             )
         with col_inflation2:
-            water_inflation = translate_slider(
+            water_inflation = translate_number_input(
                 translate_text("Annual Increase (%)", current_lang),
                 current_lang,
                 min_value=0.0,
@@ -315,7 +315,7 @@ class InputHandler:
                 key=f"{scenario_type.lower()}_other"
             )
         with col_inflation3:
-            other_inflation = translate_slider(
+            other_inflation = translate_number_input(
                 translate_text("Annual Increase (%)", current_lang),
                 current_lang,
                 min_value=0.0,
