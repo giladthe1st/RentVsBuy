@@ -104,7 +104,8 @@ def show():
             rental_details,
             years,
             rental_params.initial_investment,
-            current_lang
+            current_lang,
+            purchase_params
         )
 
         # Save results to CSV

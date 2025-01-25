@@ -15,7 +15,7 @@ class ResultsVisualizer:
         current_lang: str = 'en'
     ):
         """Creates and displays the comparison chart using Plotly"""
-        
+
         # Calculate cumulative costs for each year
         cumulative_purchase_costs = []
         cumulative_rental_costs = []
@@ -92,10 +92,11 @@ class ResultsVisualizer:
         rental_details: List[YearlyRentalDetails],
         years: int,
         initial_investment: float,
-        current_lang: str = 'en'
+        current_lang: str = 'en',
+        params: Dict = {}
     ):
         """Displays summary statistics for both scenarios"""
-        
+
         # Calculate totals for purchase scenario
         total_interest_paid = sum(year.interest_paid for year in purchase_details)
         total_principal_paid = sum(year.principal_paid for year in purchase_details)
@@ -119,7 +120,7 @@ class ResultsVisualizer:
             purchase_details[-1].investment_portfolio -  # Investment portfolio
             total_purchase_costs  # Total costs
         )
-        
+
         rental_final_position = (
             rental_details[-1].investment_portfolio -  # Investment portfolio
             total_rental_costs  # Total costs
@@ -127,42 +128,61 @@ class ResultsVisualizer:
 
         # Display the net positions with color coding
         st.header(translate_text("Final Net Position", current_lang))
-        
+
         # Display calculation breakdown
         st.markdown(translate_text("### Calculation Breakdown", current_lang))
-        
+
         col_calc1, col_calc2 = st.columns(2)
-        
+
         with col_calc1:
             st.markdown(translate_text("#### Purchase Scenario", current_lang))
             st.markdown(translate_text("**Assets:**", current_lang))
-            
+
             # Home Equity Section
             st.markdown(f"+ Home Equity: ${purchase_details[-1].equity:,.2f}")
             with st.expander("View Home Equity Details"):
+                down_payment = purchase_details[0].property_value * (params.down_payment_pct / 100)
+                st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;• Down Payment: ${down_payment:,.2f}")
                 st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;• Principal Paid: ${total_principal_paid:,.2f}")
                 st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;• Property Appreciation: ${(purchase_details[-1].property_value - purchase_details[0].property_value):,.2f}")
-            
+
             # Investment Portfolio Section
             st.markdown(f"+ Investment Portfolio: ${purchase_details[-1].investment_portfolio:,.2f}")
             with st.expander("View Investment Portfolio Details"):
                 st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;• Initial Investment: $0.00")
                 st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;• Total New Investments: ${sum(year.new_investments for year in purchase_details):,.2f}")
                 st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;• Total Investment Returns: ${sum(year.investment_returns for year in purchase_details):,.2f}")
-            
+
             st.markdown(translate_text("**Costs:**", current_lang))
             st.markdown(f"- Total Interest: ${total_interest_paid:,.2f}")
             st.markdown(f"- Total Property Tax: ${total_property_tax:,.2f}")
             st.markdown(f"- Total Maintenance: ${total_maintenance:,.2f}")
             st.markdown(f"- Total Insurance: ${total_home_insurance:,.2f}")
-            
+
             # Utilities Section
             st.markdown(f"- Total Utilities: ${total_utilities_purchase:,.2f}")
             with st.expander("View Utilities Breakdown"):
-                st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;• Electricity: ${sum(year.yearly_utilities * 0.4 for year in purchase_details):,.2f}")
-                st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;• Gas: ${sum(year.yearly_utilities * 0.3 for year in purchase_details):,.2f}")
-                st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;• Water: ${sum(year.yearly_utilities * 0.3 for year in purchase_details):,.2f}")
-            
+                # Get the utilities breakdown from yearly details
+                total_electricity = sum(
+                    year.yearly_utilities * (params.utilities.electricity.base / 
+                    (params.utilities.electricity.base + params.utilities.water.base + params.utilities.other.base))
+                    for year in purchase_details
+                )
+                total_water = sum(
+                    year.yearly_utilities * (params.utilities.water.base / 
+                    (params.utilities.electricity.base + params.utilities.water.base + params.utilities.other.base))
+                    for year in purchase_details
+                )
+                total_other = sum(
+                    year.yearly_utilities * (params.utilities.other.base / 
+                    (params.utilities.electricity.base + params.utilities.water.base + params.utilities.other.base))
+                    for year in purchase_details
+                )
+
+                st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;• Electricity: ${total_electricity:,.2f}")
+                st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;• Water: ${total_water:,.2f}")
+                st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;• Other: ${total_other:,.2f}")
+
             st.markdown("___")
             st.markdown(f"""
             {translate_text("Total Costs Calculation", current_lang)}:
@@ -192,25 +212,42 @@ class ResultsVisualizer:
         with col_calc2:
             st.markdown(translate_text("#### Rental Scenario", current_lang))
             st.markdown(translate_text("**Assets:**", current_lang))
-            
+
             # Investment Portfolio Section
             st.markdown(f"+ Investment Portfolio: ${rental_details[-1].investment_portfolio:,.2f}")
             with st.expander("View Investment Portfolio Details"):
                 st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;• Initial Investment: ${initial_investment:,.2f}")
                 st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;• Total New Investments: ${sum(year.new_investments for year in rental_details):,.2f}")
                 st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;• Total Investment Returns: ${sum(year.investment_returns for year in rental_details):,.2f}")
-            
+
             st.markdown(translate_text("**Costs:**", current_lang))
             st.markdown(f"- Total Rent: ${total_rent_paid:,.2f}")
             st.markdown(f"- Total Insurance: ${total_rent_insurance:,.2f}")
-            
+
             # Utilities Section
             st.markdown(f"- Total Utilities: ${total_utilities_rental:,.2f}")
             with st.expander("View Utilities Breakdown"):
-                st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;• Electricity: ${sum(year.yearly_utilities * 0.4 for year in rental_details):,.2f}")
-                st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;• Gas: ${sum(year.yearly_utilities * 0.3 for year in rental_details):,.2f}")
-                st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;• Water: ${sum(year.yearly_utilities * 0.3 for year in rental_details):,.2f}")
-            
+                # Get the utilities breakdown from yearly details
+                total_electricity = sum(
+                    year.yearly_utilities * (params.utilities.electricity.base / 
+                    (params.utilities.electricity.base + params.utilities.water.base + params.utilities.other.base))
+                    for year in rental_details
+                )
+                total_water = sum(
+                    year.yearly_utilities * (params.utilities.water.base / 
+                    (params.utilities.electricity.base + params.utilities.water.base + params.utilities.other.base))
+                    for year in rental_details
+                )
+                total_other = sum(
+                    year.yearly_utilities * (params.utilities.other.base / 
+                    (params.utilities.electricity.base + params.utilities.water.base + params.utilities.other.base))
+                    for year in rental_details
+                )
+
+                st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;• Electricity: ${total_electricity:,.2f}")
+                st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;• Water: ${total_water:,.2f}")
+                st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;• Other: ${total_other:,.2f}")
+
             st.markdown("___")
             st.markdown(f"""
             {translate_text("Total Costs Calculation", current_lang)}:
@@ -233,15 +270,15 @@ class ResultsVisualizer:
             = {rental_final_position:,.2f}
             ```
             """)
-        
+
         # Compare the scenarios
         difference = purchase_final_position - rental_final_position
         better_option = translate_text("Buying", current_lang) if difference > 0 else translate_text("Renting", current_lang)
         color = "green" if difference > 0 else "red"
-        
+
         st.markdown("---")
         st.markdown(translate_text("### Comparison", current_lang))
-        st.markdown(f'<p style="font-size: 18px;">{translate_text("Better financial position by", current_lang)} <span style="color: {color}; font-weight: bold;">${abs(difference):,.2f}</span> {translate_text("with", current_lang)} <span style="color: {color}; font-weight: bold;">{better_option}</span></p>', unsafe_allow_html=True)
+        st.markdown(f'<p style="font-size: 18px;">{translate_text("Better financial position by", current_lang)} <span style="color: green; font-weight: bold;">${abs(difference):,.2f}</span> {translate_text("with", current_lang)} <span style="color: green; font-weight: bold;">{better_option}</span></p>', unsafe_allow_html=True)
 
     @staticmethod
     def save_results_to_csv(
@@ -252,7 +289,7 @@ class ResultsVisualizer:
         rental_params: Dict
     ):
         """Saves the calculation results to CSV files"""
-        
+
         # Create output folder if it doesn't exist
         output_folder = 'output_data'
         os.makedirs(output_folder, exist_ok=True)
