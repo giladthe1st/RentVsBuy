@@ -46,8 +46,8 @@ class ResultsVisualizer:
         # Calculate net worth for each scenario
         property_values = [detail.property_value for detail in purchase_details]
         purchase_net_worth = [
-            property_values[i] - cumulative_purchase_costs[i] + purchase_details[i].investment_portfolio
-            for i in range(years)
+            detail.equity - cumulative_purchase_costs[i] + purchase_details[i].investment_portfolio
+            for i, detail in enumerate(purchase_details[:years])
         ]
 
         rental_net_worth = [
@@ -104,9 +104,11 @@ class ResultsVisualizer:
         total_maintenance = sum(year.maintenance for year in purchase_details)
         total_home_insurance = sum(year.insurance for year in purchase_details)
         total_utilities_purchase = sum(year.yearly_utilities for year in purchase_details)
+        total_closing_costs = purchase_details[0].closing_costs
         total_purchase_costs = (total_interest_paid + total_principal_paid +
                               total_property_tax + total_maintenance +
-                              total_home_insurance + total_utilities_purchase)
+                              total_home_insurance + total_utilities_purchase +
+                              total_closing_costs)
 
         # Calculate totals for rental scenario
         total_rent_paid = sum(year.yearly_rent for year in rental_details)
@@ -154,6 +156,7 @@ class ResultsVisualizer:
                 st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;• Total Investment Returns: ${sum(year.investment_returns for year in purchase_details):,.2f}")
 
             st.markdown(translate_text("**Costs:**", current_lang))
+            st.markdown(f"- One-Time Closing Costs: ${total_closing_costs:,.2f}")
             st.markdown(f"- Total Interest: ${total_interest_paid:,.2f}")
             st.markdown(f"- Total Property Tax: ${total_property_tax:,.2f}")
             st.markdown(f"- Total Maintenance: ${total_maintenance:,.2f}")
@@ -187,7 +190,8 @@ class ResultsVisualizer:
             st.markdown(f"""
             {translate_text("Total Costs Calculation", current_lang)}:
             ```
-            {total_interest_paid:,.2f} (Interest)
+            {total_closing_costs:,.2f} (Closing Costs)
+            + {total_interest_paid:,.2f} (Interest)
             + {total_property_tax:,.2f} (Property Tax)
             + {total_maintenance:,.2f} (Maintenance)
             + {total_home_insurance:,.2f} (Insurance)

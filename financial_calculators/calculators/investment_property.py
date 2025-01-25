@@ -4,7 +4,7 @@ import numpy as np
 import plotly.graph_objects as go
 from numpy_financial import irr
 from typing import Dict, List, Tuple
-from translation_utils import create_language_selector, translate_text, translate_number_input, translate_slider
+from translation_utils import create_language_selector, translate_text, translate_number_input, translate_number_input
 import os
 
 def calculate_loan_details(price: float, down_payment_pct: float, interest_rate: float, loan_years: int) -> Tuple[float, float]:
@@ -76,7 +76,7 @@ def show():
             help=translate_text("Enter the total purchase price of the property", current_lang)
         )
         
-        down_payment_pct = translate_slider(
+        down_payment_pct = translate_number_input(
             translate_text("Down Payment (%)", current_lang),
             current_lang,
             min_value=0,
@@ -88,17 +88,17 @@ def show():
         down_payment_amount = purchase_price * (down_payment_pct / 100)
         st.write(translate_text("Down Payment Amount", current_lang) + f": ${down_payment_amount:,.2f}")
         
-        interest_rate = translate_slider(
+        interest_rate = translate_number_input(
             translate_text("Interest Rate (%)", current_lang),
             current_lang,
             min_value=0.0,
             max_value=20.0,
-            value=6.5,
+            value=4.0,
             step=0.1,
             help=translate_text("Enter the annual interest rate for the mortgage", current_lang)
         )
         
-        loan_years = translate_slider(
+        loan_years = translate_number_input(
             translate_text("Loan Term (Years)", current_lang),
             current_lang,
             min_value=1,
@@ -107,12 +107,12 @@ def show():
             help=translate_text("Enter the length of the mortgage in years", current_lang)
         )
         
-        holding_period = translate_slider(
+        holding_period = translate_number_input(
             translate_text("Expected Holding Period (Years)", current_lang),
             current_lang,
             min_value=1,
             max_value=50,
-            value=10,
+            value=30,
             help=translate_text("How long do you plan to hold this investment?", current_lang)
         )
 
@@ -137,7 +137,7 @@ def show():
             help=translate_text("Additional income from parking, laundry, storage, etc.", current_lang)
         )
         
-        vacancy_rate = translate_slider(
+        vacancy_rate = translate_number_input(
             translate_text("Vacancy Rate (%)", current_lang),
             current_lang,
             min_value=0,
@@ -146,7 +146,7 @@ def show():
             help=translate_text("Expected percentage of time the property will be vacant", current_lang)
         )
         
-        annual_rent_increase = translate_slider(
+        annual_rent_increase = translate_number_input(
             translate_text("Annual Rent Increase (%)", current_lang),
             current_lang,
             min_value=0,
@@ -188,7 +188,7 @@ def show():
 
     # Operating Expenses Section
     st.subheader(translate_text("Operating Expenses", current_lang))
-    exp_col1, exp_col2 = st.columns(2)
+    exp_col1, exp_col2, exp_col3 = st.columns(3)
 
     with exp_col1:
         property_tax = translate_number_input(
@@ -228,7 +228,7 @@ def show():
         )
 
     with exp_col2:
-        maintenance_pct = translate_slider(
+        maintenance_pct = translate_number_input(
             translate_text("Maintenance & Repairs (% of property value)", current_lang),
             current_lang,
             min_value=0.0,
@@ -245,6 +245,57 @@ def show():
             value=0,
             step=50,
             help=translate_text("Monthly HOA or condo fees if applicable", current_lang)
+        )
+
+    with exp_col3:
+        property_tax_inflation = translate_number_input(
+            translate_text("Property Tax Annual Increase (%)", current_lang),
+            current_lang,
+            min_value=0.0,
+            max_value=10.0,
+            value=2.0,
+            step=0.1,
+            help=translate_text("Expected annual increase in property tax", current_lang)
+        )
+        
+        insurance_inflation = translate_number_input(
+            translate_text("Insurance Annual Increase (%)", current_lang),
+            current_lang,
+            min_value=0.0,
+            max_value=10.0,
+            value=3.0,
+            step=0.1,
+            help=translate_text("Expected annual increase in insurance cost", current_lang)
+        )
+        
+        utilities_inflation = translate_number_input(
+            translate_text("Utilities Annual Increase (%)", current_lang),
+            current_lang,
+            min_value=0.0,
+            max_value=10.0,
+            value=2.5,
+            step=0.1,
+            help=translate_text("Expected annual increase in utilities cost", current_lang)
+        )
+        
+        mgmt_fee_inflation = translate_number_input(
+            translate_text("Management Fee Annual Increase (%)", current_lang),
+            current_lang,
+            min_value=0.0,
+            max_value=10.0,
+            value=2.0,
+            step=0.1,
+            help=translate_text("Expected annual increase in property management fee", current_lang)
+        )
+        
+        hoa_inflation = translate_number_input(
+            translate_text("HOA Fees Annual Increase (%)", current_lang),
+            current_lang,
+            min_value=0.0,
+            max_value=10.0,
+            value=3.0,
+            step=0.1,
+            help=translate_text("Expected annual increase in HOA fees", current_lang)
         )
 
     # Calculate monthly operating expenses
@@ -328,7 +379,7 @@ def show():
     appreciation_col1, appreciation_col2, appreciation_col3 = st.columns(3)
     
     with appreciation_col1:
-        conservative_rate = translate_slider(
+        conservative_rate = translate_number_input(
             translate_text("Conservative Growth Rate (%)", current_lang),
             current_lang,
             min_value=0.0,
@@ -339,7 +390,7 @@ def show():
         )
     
     with appreciation_col2:
-        moderate_rate = translate_slider(
+        moderate_rate = translate_number_input(
             translate_text("Moderate Growth Rate (%)", current_lang),
             current_lang,
             min_value=0.0,
@@ -350,7 +401,7 @@ def show():
         )
     
     with appreciation_col3:
-        optimistic_rate = translate_slider(
+        optimistic_rate = translate_number_input(
             translate_text("Optimistic Growth Rate (%)", current_lang),
             current_lang,
             min_value=0.0,
@@ -363,7 +414,7 @@ def show():
     # Calculate future values and IRR for each scenario
     years = list(range(holding_period + 1))
     
-    # Calculate annual cash flows with rent increase
+    # Calculate annual cash flows with rent increase and expense inflation
     annual_cash_flows = []
     for year in range(holding_period):
         # Calculate rent for this year with annual increase
@@ -373,14 +424,31 @@ def show():
         year_effective_monthly_income = year_monthly_income - year_monthly_vacancy_loss
         year_effective_income = year_effective_monthly_income * 12
         
+        # Calculate inflated expenses for this year
+        year_property_tax = property_tax * (1 + property_tax_inflation/100)**year
+        year_insurance = insurance * (1 + insurance_inflation/100)**year
+        year_utilities = utilities * (1 + utilities_inflation/100)**year * 12
+        year_mgmt_fee = mgmt_fee * (1 + mgmt_fee_inflation/100)**year * 12
+        year_maintenance = monthly_maintenance * 12 * (1 + conservative_rate/100)**year  # Maintenance increases with property value
+        year_hoa = hoa_fees * (1 + hoa_inflation/100)**year * 12
+        
+        # Calculate total expenses for this year
+        year_expenses = (
+            year_property_tax +
+            year_insurance +
+            year_utilities +
+            year_mgmt_fee +
+            year_maintenance +
+            year_hoa
+        )
+        
         # Only include mortgage payment if still within loan term
         annual_mortgage = monthly_payment * 12 if year < loan_years else 0
-        annual_expenses = monthly_operating_expenses * 12
         
         year_cash_flow = (
             year_effective_income -
             annual_mortgage -
-            annual_expenses
+            year_expenses
         )
         annual_cash_flows.append(year_cash_flow)
     
@@ -520,26 +588,6 @@ def show():
         end_idx = start_idx + 12
         yearly_principal = df_loan['Principal'][start_idx:end_idx].sum()
         yearly_equity.append(yearly_principal)
-    
-    # Create equity buildup visualization
-    fig_equity = go.Figure()
-    
-    fig_equity.add_trace(go.Bar(
-        x=list(range(1, loan_years + 1)),
-        y=yearly_equity,
-        name=translate_text('Annual Equity Buildup', current_lang),
-        marker_color='green'
-    ))
-    
-    fig_equity.update_layout(
-        title=translate_text('Annual Equity Buildup from Loan Paydown', current_lang),
-        xaxis_title=translate_text('Year', current_lang),
-        yaxis_title=translate_text('Equity Added ($)', current_lang),
-        showlegend=False,
-        yaxis=dict(tickformat='$,.0f')
-    )
-    
-    st.plotly_chart(fig_equity, use_container_width=True)
 
     # Summary metrics for the holding period
     total_equity_buildup = sum(yearly_equity[:holding_period])

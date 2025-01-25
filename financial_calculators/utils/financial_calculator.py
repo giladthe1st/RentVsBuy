@@ -1,6 +1,7 @@
 from typing import Tuple, List, Dict
 from models.data_models import PurchaseScenarioParams, RentalScenarioParams, Utilities
 from models.rent_vs_buy_models import YearlyPurchaseDetails, YearlyRentalDetails
+from .constants import CLOSING_COSTS
 
 class FinancialCalculator:
     @staticmethod
@@ -9,6 +10,10 @@ class FinancialCalculator:
         loan_amount = params.house_price - down_payment
         monthly_rate = params.interest_rate / (100 * 12)
         num_payments = params.years * 12
+
+        # Calculate closing costs
+        closing_costs = FinancialCalculator.calculate_closing_costs(params.house_price)
+        initial_costs = closing_costs['total']
 
         investment_portfolio = 0
         current_monthly_investment = params.monthly_investment
@@ -65,8 +70,11 @@ class FinancialCalculator:
             investment_returns = investment_portfolio * (params.investment_return/100)
             investment_portfolio = investment_portfolio * (1 + params.investment_return/100) + yearly_investment
 
+            # Add closing costs to first year's total costs
             total_yearly_costs = (yearly_mortgage + yearly_tax + yearly_maintenance + 
                                 current_insurance + yearly_utilities)
+            if year == 0:
+                total_yearly_costs += initial_costs
 
             total_interest_to_date += yearly_interest_paid
             total_principal_to_date += yearly_principal_paid
@@ -88,13 +96,38 @@ class FinancialCalculator:
                 investment_portfolio=investment_portfolio,
                 investment_returns=investment_returns,
                 new_investments=yearly_investment,
-                yearly_utilities=yearly_utilities
+                yearly_utilities=yearly_utilities,
+                closing_costs=initial_costs if year == 0 else 0
             ))
 
             property_values.append(current_home_value)
             equity_values.append(equity)
 
         return property_values, equity_values, yearly_details
+
+    @staticmethod
+    def calculate_closing_costs(house_price: float) -> Dict[str, float]:
+        """Calculate closing costs for a home purchase."""
+        # Fixed costs
+        costs = {
+            'legal_fees': CLOSING_COSTS['legal_fees'],
+            'bank_appraisal_fee': CLOSING_COSTS['bank_appraisal_fee'],
+            'interest_adjustment': CLOSING_COSTS['interest_adjustment'],
+            'title_insurance': CLOSING_COSTS['title_insurance']
+        }
+        
+        # Calculate land transfer tax
+        if house_price <= CLOSING_COSTS['land_transfer_threshold']:
+            land_transfer_tax = CLOSING_COSTS['land_transfer_base']
+        else:
+            excess_amount = house_price - CLOSING_COSTS['land_transfer_threshold']
+            land_transfer_tax = (CLOSING_COSTS['land_transfer_base'] + 
+                               excess_amount * CLOSING_COSTS['land_transfer_rate'])
+        
+        costs['land_transfer_tax'] = land_transfer_tax
+        costs['total'] = sum(costs.values())
+        
+        return costs
 
     @staticmethod
     def calculate_rental_scenario(params: RentalScenarioParams) -> Tuple[List[float], List[YearlyRentalDetails]]:
