@@ -681,6 +681,65 @@ def show():
             help=translate_text("Average yearly cash flow during holding period", current_lang)
         )
 
+    # Yearly Breakdown Section
+    st.markdown("___")
+    st.subheader(translate_text("Yearly Cost and Revenue Breakdown", current_lang))
+    
+    with st.expander(translate_text("View Detailed Yearly Breakdown", current_lang)):
+        yearly_data = []
+        for year in range(holding_period):
+            # Calculate values for this year
+            year_monthly_rent = monthly_rent * (1 + annual_rent_increase/100)**year
+            year_monthly_income = year_monthly_rent + other_income
+            year_monthly_vacancy_loss = year_monthly_income * (vacancy_rate / 100)
+            
+            year_property_tax = property_tax * (1 + property_tax_inflation/100)**year
+            year_insurance = insurance * (1 + insurance_inflation/100)**year
+            year_utilities = utilities * (1 + utilities_inflation/100)**year * 12
+            year_mgmt_fee = mgmt_fee * (1 + mgmt_fee_inflation/100)**year * 12
+            year_maintenance = monthly_maintenance * 12 * (1 + conservative_rate/100)**year
+            year_hoa = hoa_fees * (1 + hoa_inflation/100)**year * 12
+            
+            # Calculate property values for each scenario
+            conservative_value = purchase_price * (1 + conservative_rate/100)**year
+            moderate_value = purchase_price * (1 + moderate_rate/100)**year
+            optimistic_value = purchase_price * (1 + optimistic_rate/100)**year
+            
+            # Calculate mortgage components for this year
+            if year < loan_years:
+                start_idx = year * 12
+                end_idx = start_idx + 12
+                year_principal = df_loan['Principal'][start_idx:end_idx].sum()
+                year_interest = df_loan['Interest'][start_idx:end_idx].sum()
+                year_mortgage = monthly_payment * 12
+            else:
+                year_principal = 0
+                year_interest = 0
+                year_mortgage = 0
+            
+            yearly_data.append({
+                "Year": year + 1,
+                "Rental Income": f"${year_monthly_income * 12:,.2f}",
+                "Vacancy Loss": f"${year_monthly_vacancy_loss * 12:,.2f}",
+                "Property Tax": f"${year_property_tax:,.2f}",
+                "Insurance": f"${year_insurance:,.2f}",
+                "Utilities": f"${year_utilities:,.2f}",
+                "Management Fee": f"${year_mgmt_fee:,.2f}",
+                "Maintenance": f"${year_maintenance:,.2f}",
+                "HOA Fees": f"${year_hoa:,.2f}",
+                "Mortgage Payment": f"${year_mortgage:,.2f}",
+                "Principal Paid": f"${year_principal:,.2f}",
+                "Interest Paid": f"${year_interest:,.2f}",
+                "Cash Flow": f"${annual_cash_flows[year]:,.2f}",
+                "Conservative Value": f"${conservative_value:,.2f}",
+                "Moderate Value": f"${moderate_value:,.2f}",
+                "Optimistic Value": f"${optimistic_value:,.2f}",
+                "Equity": f"${conservative_equity[year]:,.2f}"
+            })
+        
+        df = pd.DataFrame(yearly_data)
+        st.dataframe(df, use_container_width=True)
+
 def main():
     show()
 
