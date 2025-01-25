@@ -4,8 +4,10 @@ import numpy as np
 import plotly.graph_objects as go
 from numpy_financial import irr
 from typing import Dict, List, Tuple
-from translation_utils import create_language_selector, translate_text, translate_number_input, translate_number_input
+from translation_utils import create_language_selector, translate_text, translate_number_input
 import os
+from utils.financial_calculator import FinancialCalculator
+from utils.constants import CLOSING_COSTS_INFO_URL
 
 def calculate_loan_details(price: float, down_payment_pct: float, interest_rate: float, loan_years: int) -> Tuple[float, float]:
     """Calculate monthly mortgage payment and loan amount."""
@@ -76,17 +78,33 @@ def show():
             help=translate_text("Enter the total purchase price of the property", current_lang)
         )
         
+        # Calculate and display closing costs
+        closing_costs = FinancialCalculator.calculate_closing_costs(purchase_price)
+        with st.expander(translate_text("View Closing Costs Breakdown", current_lang)):
+            st.markdown(f"""
+            #### {translate_text('One-Time Closing Costs', current_lang)}
+            - {translate_text('Legal Fees', current_lang)}: ${closing_costs['legal_fees']:,.2f}
+            - {translate_text('Bank Appraisal Fee', current_lang)}: ${closing_costs['bank_appraisal_fee']:,.2f}
+            - {translate_text('Interest Adjustment', current_lang)}: ${closing_costs['interest_adjustment']:,.2f}
+            - {translate_text('Title Insurance', current_lang)}: ${closing_costs['title_insurance']:,.2f}
+            - {translate_text('Land Transfer Tax', current_lang)}: ${closing_costs['land_transfer_tax']:,.2f}
+            
+            **{translate_text('Total Closing Costs', current_lang)}: ${closing_costs['total']:,.2f}**
+            
+            [Learn more about closing costs]({CLOSING_COSTS_INFO_URL})
+            """)
+        
         down_payment_pct = translate_number_input(
             translate_text("Down Payment (%)", current_lang),
             current_lang,
-            min_value=0,
-            max_value=100,
-            value=20,
-            help=translate_text("Enter the down payment percentage", current_lang)
+            min_value=0.0,
+            max_value=100.0,
+            value=20.0,
+            step=1.0,
+            help=translate_text("Percentage of purchase price as down payment", current_lang)
         )
-        
         down_payment_amount = purchase_price * (down_payment_pct / 100)
-        st.write(translate_text("Down Payment Amount", current_lang) + f": ${down_payment_amount:,.2f}")
+        st.markdown(f"Down Payment Amount: **${down_payment_amount:,.2f}**")
         
         interest_rate = translate_number_input(
             translate_text("Interest Rate (%)", current_lang),
@@ -165,7 +183,7 @@ def show():
 
     # Display initial mortgage details
     st.subheader(translate_text("Initial Mortgage Details", current_lang))
-    mort_col1, mort_col2, mort_col3 = st.columns(3)
+    mort_col1, mort_col2, mort_col3, mort_col4, mort_col5 = st.columns(5)
     
     with mort_col1:
         st.metric(
@@ -184,6 +202,18 @@ def show():
             translate_text("Annual Payment", current_lang),
             f"${monthly_payment * 12:,.2f}",
             help=translate_text("Total yearly mortgage payment", current_lang)
+        )
+    with mort_col4:
+        st.metric(
+            translate_text("Down Payment", current_lang),
+            f"${down_payment_amount:,.2f}",
+            help=translate_text("Initial down payment amount", current_lang)
+        )
+    with mort_col5:
+        st.metric(
+            translate_text("Closing Costs", current_lang),
+            f"${closing_costs['total']:,.2f}",
+            help=translate_text("One-time closing costs for property purchase", current_lang)
         )
 
     # Operating Expenses Section
@@ -414,6 +444,25 @@ def show():
     # Calculate future values and IRR for each scenario
     years = list(range(holding_period + 1))
     
+    # Calculate loan amortization to track principal paid
+    loan_schedule = []
+    remaining_balance = loan_amount
+    total_principal_paid = 0
+    principal_paid_by_year = [0]  # Start with 0 for year 0
+    
+    for _ in range(loan_years * 12):
+        interest_payment = remaining_balance * (interest_rate / (12 * 100))
+        principal_payment = monthly_payment - interest_payment
+        remaining_balance -= principal_payment
+        total_principal_paid += principal_payment
+        
+        if len(principal_paid_by_year) < ((_ + 1) // 12 + 1):
+            principal_paid_by_year.append(total_principal_paid)
+    
+    # Fill remaining years after loan is paid off
+    while len(principal_paid_by_year) <= holding_period:
+        principal_paid_by_year.append(total_principal_paid)
+
     # Calculate annual cash flows with rent increase and expense inflation
     annual_cash_flows = []
     for year in range(holding_period):
@@ -452,28 +501,43 @@ def show():
         )
         annual_cash_flows.append(year_cash_flow)
     
-    # Initialize arrays for each scenario
-    conservative_values = [purchase_price * (1 + conservative_rate/100)**year for year in years]
-    moderate_values = [purchase_price * (1 + moderate_rate/100)**year for year in years]
-    optimistic_values = [purchase_price * (1 + optimistic_rate/100)**year for year in years]
+    # Initialize arrays for each scenario - now calculating equity value
+    conservative_equity = []
+    moderate_equity = []
+    optimistic_equity = []
     
-    # Calculate IRR for each scenario using the adjusted cash flows
-    conservative_irr = calculate_irr(
-        down_payment_amount,
+    for year in range(holding_period + 1):
+        # Base equity is down payment + principal paid - closing costs
+        base_equity = down_payment_amount + principal_paid_by_year[year] - closing_costs['total']
+        
+        # Add appreciation for each scenario
+        conservative_appreciation = purchase_price * ((1 + conservative_rate/100)**year - 1)
+        moderate_appreciation = purchase_price * ((1 + moderate_rate/100)**year - 1)
+        optimistic_appreciation = purchase_price * ((1 + optimistic_rate/100)**year - 1)
+        
+        conservative_equity.append(base_equity + conservative_appreciation)
+        moderate_equity.append(base_equity + moderate_appreciation)
+        optimistic_equity.append(base_equity + optimistic_appreciation)
+
+    # Calculate ROI for each scenario
+    initial_investment = down_payment_amount + closing_costs['total']  # Include closing costs in initial investment
+    
+    conservative_roi = calculate_irr(
+        initial_investment,
         annual_cash_flows,
-        conservative_values[-1] - purchase_price
+        conservative_equity[-1]
     )
     
-    moderate_irr = calculate_irr(
-        down_payment_amount,
+    moderate_roi = calculate_irr(
+        initial_investment,
         annual_cash_flows,
-        moderate_values[-1] - purchase_price
+        moderate_equity[-1]
     )
     
-    optimistic_irr = calculate_irr(
-        down_payment_amount,
+    optimistic_roi = calculate_irr(
+        initial_investment,
         annual_cash_flows,
-        optimistic_values[-1] - purchase_price
+        optimistic_equity[-1]
     )
 
     # Display IRR metrics
@@ -482,21 +546,21 @@ def show():
     with irr_col1:
         st.metric(
             translate_text("Conservative IRR", current_lang),
-            f"{conservative_irr:.1f}%",
+            f"{conservative_roi:.1f}%",
             help=translate_text("Internal Rate of Return assuming conservative appreciation", current_lang)
         )
     
     with irr_col2:
         st.metric(
             translate_text("Moderate IRR", current_lang),
-            f"{moderate_irr:.1f}%",
+            f"{moderate_roi:.1f}%",
             help=translate_text("Internal Rate of Return assuming moderate appreciation", current_lang)
         )
     
     with irr_col3:
         st.metric(
             translate_text("Optimistic IRR", current_lang),
-            f"{optimistic_irr:.1f}%",
+            f"{optimistic_roi:.1f}%",
             help=translate_text("Internal Rate of Return assuming optimistic appreciation", current_lang)
         )
 
@@ -506,25 +570,25 @@ def show():
     # Property Value Chart
     fig = go.Figure()
     
-    # Add traces for property values
+    # Add traces for equity values
     fig.add_trace(go.Scatter(
         x=years,
-        y=conservative_values,
-        name=translate_text('Conservative Value', current_lang),
+        y=conservative_equity,
+        name=translate_text('Conservative Equity', current_lang),
         line=dict(color="blue", dash="dot")
     ))
     
     fig.add_trace(go.Scatter(
         x=years,
-        y=moderate_values,
-        name=translate_text('Moderate Value', current_lang),
+        y=moderate_equity,
+        name=translate_text('Moderate Equity', current_lang),
         line=dict(color="green")
     ))
     
     fig.add_trace(go.Scatter(
         x=years,
-        y=optimistic_values,
-        name=translate_text('Optimistic Value', current_lang),
+        y=optimistic_equity,
+        name=translate_text('Optimistic Equity', current_lang),
         line=dict(color="red", dash="dash")
     ))
     
@@ -541,7 +605,7 @@ def show():
     fig.update_layout(
         title=translate_text('Property Value and Cash Flow Over Time', current_lang),
         xaxis_title=translate_text('Years', current_lang),
-        yaxis_title=translate_text('Property Value ($)', current_lang),
+        yaxis_title=translate_text('Equity Value ($)', current_lang),
         yaxis2=dict(
             title=translate_text('Annual Cash Flow ($)', current_lang),
             overlaying="y",
@@ -616,3 +680,9 @@ def show():
             f"${average_annual_cash_flow:,.2f}",
             help=translate_text("Average yearly cash flow during holding period", current_lang)
         )
+
+def main():
+    show()
+
+if __name__ == "__main__":
+    main()

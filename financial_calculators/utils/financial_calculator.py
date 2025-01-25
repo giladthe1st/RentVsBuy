@@ -18,10 +18,7 @@ class FinancialCalculator:
         investment_portfolio = 0
         current_monthly_investment = params.monthly_investment
 
-        if params.interest_rate == 0:
-            monthly_payment = loan_amount / num_payments
-        else:
-            monthly_payment = loan_amount * (monthly_rate * (1 + monthly_rate)**num_payments) / ((1 + monthly_rate)**num_payments - 1)
+        monthly_payment = FinancialCalculator.calculate_monthly_mortgage_payment(loan_amount, params.interest_rate, params.years)
 
         property_values = []
         equity_values = []
@@ -104,6 +101,26 @@ class FinancialCalculator:
             equity_values.append(equity)
 
         return property_values, equity_values, yearly_details
+
+    @staticmethod
+    def calculate_monthly_mortgage_payment(loan_amount: float, interest_rate: float, years: int) -> float:
+        """Calculate the monthly mortgage payment.
+        
+        Args:
+            loan_amount: The total amount of the loan
+            interest_rate: Annual interest rate as a percentage (e.g., 5.5 for 5.5%)
+            years: The term of the loan in years
+            
+        Returns:
+            Monthly payment amount
+        """
+        monthly_rate = interest_rate / (100 * 12)
+        num_payments = years * 12
+
+        if interest_rate == 0:
+            return loan_amount / num_payments
+        else:
+            return loan_amount * (monthly_rate * (1 + monthly_rate)**num_payments) / ((1 + monthly_rate)**num_payments - 1)
 
     @staticmethod
     def calculate_closing_costs(house_price: float) -> Dict[str, float]:

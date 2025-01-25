@@ -153,6 +153,45 @@ class InputHandler:
 
         utilities_data = InputHandler._create_utilities_inputs("Purchase", current_lang)
 
+        # Calculate total monthly expenses
+        loan_amount = house_price * (1 - down_payment/100)
+        monthly_payment = FinancialCalculator.calculate_monthly_mortgage_payment(
+            loan_amount, interest_rate, st.session_state.get('simulation_years', DEFAULT_VALUES['years'])
+        )
+        monthly_property_tax = (house_price * property_tax / 100) / 12
+        monthly_maintenance = (house_price * maintenance_rate / 100) / 12
+        monthly_insurance = insurance / 12
+        monthly_utilities = (utilities_data.electricity.base + utilities_data.water.base + utilities_data.other.base)
+        
+        total_monthly_expenses = monthly_payment + monthly_property_tax + monthly_maintenance + monthly_insurance + monthly_utilities
+        total_monthly_with_investment = total_monthly_expenses + monthly_investment
+
+        # Display monthly breakdown
+        st.subheader(translate_text("Monthly Payment Breakdown", current_lang))
+        col1, col2 = st.columns([2, 1])
+        
+        with col1:
+            st.markdown(f"""
+            #### {translate_text('Required Monthly Expenses', current_lang)}
+            - {translate_text('Mortgage Payment', current_lang)}: **${monthly_payment:,.2f}**
+            - {translate_text('Property Tax', current_lang)}: **${monthly_property_tax:,.2f}**
+            - {translate_text('Maintenance', current_lang)}: **${monthly_maintenance:,.2f}**
+            - {translate_text('Insurance', current_lang)}: **${monthly_insurance:,.2f}**
+            - {translate_text('Utilities', current_lang)}: **${monthly_utilities:,.2f}**
+            
+            #### {translate_text('Optional Investment', current_lang)}
+            - {translate_text('Monthly Investment', current_lang)}: **${monthly_investment:,.2f}**
+            """)
+        
+        with col2:
+            st.markdown(f"""
+            ### {translate_text('Required Monthly', current_lang)}
+            ## ${total_monthly_expenses:,.2f}
+            
+            ### {translate_text('With Investment', current_lang)}
+            ## ${total_monthly_with_investment:,.2f}
+            """)
+
         return PurchaseScenarioParams(
             house_price=house_price,
             down_payment_pct=down_payment,
@@ -258,6 +297,36 @@ class InputHandler:
         )
 
         utilities_data = InputHandler._create_utilities_inputs("Rental", current_lang)
+
+        # Calculate total monthly expenses
+        monthly_utilities = (utilities_data.electricity.base + utilities_data.water.base + utilities_data.other.base)
+        monthly_insurance = rent_insurance / 12
+        total_monthly_expenses = monthly_rent + monthly_utilities + monthly_insurance
+        total_monthly_with_investment = total_monthly_expenses + monthly_investment
+
+        # Display monthly breakdown
+        st.subheader(translate_text("Monthly Payment Breakdown", current_lang))
+        col1, col2 = st.columns([2, 1])
+        
+        with col1:
+            st.markdown(f"""
+            #### {translate_text('Required Monthly Expenses', current_lang)}
+            - {translate_text('Rent', current_lang)}: **${monthly_rent:,.2f}**
+            - {translate_text('Insurance', current_lang)}: **${monthly_insurance:,.2f}**
+            - {translate_text('Utilities', current_lang)}: **${monthly_utilities:,.2f}**
+            
+            #### {translate_text('Optional Investment', current_lang)}
+            - {translate_text('Monthly Investment', current_lang)}: **${monthly_investment:,.2f}**
+            """)
+        
+        with col2:
+            st.markdown(f"""
+            ### {translate_text('Required Monthly', current_lang)}
+            ## ${total_monthly_expenses:,.2f}
+            
+            ### {translate_text('With Investment', current_lang)}
+            ## ${total_monthly_with_investment:,.2f}
+            """)
 
         return RentalScenarioParams(
             monthly_rent=monthly_rent,
