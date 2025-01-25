@@ -284,6 +284,56 @@ class ResultsVisualizer:
         st.markdown(translate_text("### Comparison", current_lang))
         st.markdown(f'<p style="font-size: 18px;">{translate_text("Better financial position by", current_lang)} <span style="color: green; font-weight: bold;">${abs(difference):,.2f}</span> {translate_text("with", current_lang)} <span style="color: green; font-weight: bold;">{better_option}</span></p>', unsafe_allow_html=True)
 
+        # Add yearly breakdown section
+        st.markdown("___")
+        st.markdown(translate_text("### Yearly Cost Breakdown", current_lang))
+        
+        with st.expander(translate_text("View Detailed Yearly Breakdown", current_lang)):
+            # Create tabs for Purchase and Rental scenarios
+            purchase_tab, rental_tab = st.tabs(["Purchase Scenario", "Rental Scenario"])
+            
+            with purchase_tab:
+                purchase_data = []
+                for i, year in enumerate(purchase_details):
+                    yearly_data = {
+                        "Year": i + 1,
+                        "Property Value": f"${year.property_value:,.2f}",
+                        "Mortgage Payment": f"${year.yearly_mortgage:,.2f}",
+                        "Principal Paid": f"${year.principal_paid:,.2f}",
+                        "Interest Paid": f"${year.interest_paid:,.2f}",
+                        "Property Tax": f"${year.property_tax:,.2f}",
+                        "Maintenance": f"${year.maintenance:,.2f}",
+                        "Insurance": f"${year.insurance:,.2f}",
+                        "Utilities": f"${year.yearly_utilities:,.2f}",
+                        "Investment Portfolio": f"${year.investment_portfolio:,.2f}",
+                        "Home Equity": f"${year.equity:,.2f}"
+                    }
+                    if i == 0:
+                        yearly_data["Closing Costs"] = f"${year.closing_costs:,.2f}"
+                    else:
+                        yearly_data["Closing Costs"] = "$0.00"
+                    purchase_data.append(yearly_data)
+                
+                df_purchase = pd.DataFrame(purchase_data)
+                st.dataframe(df_purchase, use_container_width=True)
+            
+            with rental_tab:
+                rental_data = []
+                for i, year in enumerate(rental_details):
+                    yearly_data = {
+                        "Year": i + 1,
+                        "Yearly Rent": f"${year.yearly_rent:,.2f}",
+                        "Insurance": f"${year.rent_insurance:,.2f}",
+                        "Utilities": f"${year.yearly_utilities:,.2f}",
+                        "Investment Portfolio": f"${year.investment_portfolio:,.2f}",
+                        "New Investments": f"${year.new_investments:,.2f}",
+                        "Investment Returns": f"${year.investment_returns:,.2f}"
+                    }
+                    rental_data.append(yearly_data)
+                
+                df_rental = pd.DataFrame(rental_data)
+                st.dataframe(df_rental, use_container_width=True)
+
     @staticmethod
     def save_results_to_csv(
         purchase_details: List[YearlyPurchaseDetails],
