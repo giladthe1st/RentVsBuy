@@ -1,0 +1,10 @@
+# Python cache files
+**/__pycache__/
+*.pyc
+
+# Output data
+financial_calculators/output_data/*.csv
+output_data/*.csv
+
+# Specific scripts
+financial_calculators/scripts/scrape_from_realtor.py
