@@ -9,14 +9,73 @@ import os
 from utils.financial_calculator import FinancialCalculator
 from utils.constants import CLOSING_COSTS_INFO_URL
 
-def calculate_loan_details(price: float, down_payment_pct: float, interest_rate: float, loan_years: int) -> Tuple[float, float]:
-    """Calculate monthly mortgage payment and loan amount."""
-    loan_amount = price * (1 - down_payment_pct / 100)
-    monthly_rate = interest_rate / (12 * 100)
-    num_payments = loan_years * 12
+def calculate_loan_details(price: float, down_payment_pct: float, interest_rates: List[Dict[str, float]], loan_years: int) -> Tuple[List[float], float]:
+    """
+    Calculate monthly mortgage payments and loan amount with variable interest rates.
     
-    monthly_payment = loan_amount * (monthly_rate * (1 + monthly_rate)**num_payments) / ((1 + monthly_rate)**num_payments - 1)
-    return monthly_payment, loan_amount
+    Args:
+        price: Property purchase price
+        down_payment_pct: Down payment percentage
+        interest_rates: List of dictionaries containing {'rate': float, 'years': int}
+        loan_years: Total loan term in years
+    
+    Returns:
+        Tuple of (list of monthly payments, loan amount)
+    """
+    loan_amount = price * (1 - down_payment_pct / 100)
+    monthly_payments = []
+    remaining_principal = loan_amount
+    total_months = 0
+    
+    # Handle empty or invalid interest rates
+    if not interest_rates or len(interest_rates) == 0:
+        return [0] * (loan_years * 12), loan_amount
+    
+    # Calculate payments for each rate period
+    for i, rate_period in enumerate(interest_rates):
+        rate = rate_period['rate']
+        years = rate_period['years']
+        months = years * 12
+        
+        # Adjust months if we exceed the loan term
+        if total_months + months > loan_years * 12:
+            months = (loan_years * 12) - total_months
+            if months <= 0:
+                break
+        
+        # Calculate payment for this period based on remaining principal and months
+        monthly_rate = rate / (12 * 100)
+        remaining_months = sum(period['years'] * 12 for period in interest_rates[i:])
+        if remaining_months > (loan_years * 12 - total_months):
+            remaining_months = loan_years * 12 - total_months
+            
+        payment = remaining_principal * (monthly_rate * (1 + monthly_rate)**remaining_months) / ((1 + monthly_rate)**remaining_months - 1)
+        
+        # Add payments for this period
+        period_payments = []
+        for _ in range(months):
+            interest = remaining_principal * monthly_rate
+            principal = payment - interest
+            remaining_principal -= principal
+            period_payments.append(payment)
+            
+        monthly_payments.extend(period_payments)
+        total_months += months
+        
+        if total_months >= loan_years * 12:
+            break
+    
+    return monthly_payments, loan_amount
+
+def get_rate_for_month(interest_rates: List[Dict[str, float]], month: int) -> float:
+    """Get the interest rate applicable for a given month."""
+    months_passed = 0
+    for rate_info in interest_rates:
+        period_months = rate_info['years'] * 12
+        if month < months_passed + period_months:
+            return rate_info['rate']
+        months_passed += period_months
+    return interest_rates[-1]['rate']  # Use last rate if beyond defined periods
 
 def calculate_noi(annual_income: float, operating_expenses: float) -> float:
     """Calculate Net Operating Income."""
@@ -137,24 +196,38 @@ def show():
         down_payment_amount = purchase_price * (down_payment_pct / 100)
         st.markdown(f"Down Payment Amount: **${down_payment_amount:,.2f}**")
         
-        interest_rate = translate_number_input(
-            translate_text("Interest Rate (%)", current_lang),
-            current_lang,
-            min_value=0.0,
-            max_value=20.0,
-            value=4.0,
-            step=0.1,
-            help=translate_text("Enter the annual interest rate for the mortgage", current_lang)
-        )
-        
-        loan_years = translate_number_input(
-            translate_text("Loan Term (Years)", current_lang),
+        interest_rates = []
+        num_rate_periods = translate_number_input(
+            translate_text("Number of Interest Rate Periods", current_lang),
             current_lang,
             min_value=1,
-            max_value=40,
-            value=30,
-            help=translate_text("Enter the length of the mortgage in years", current_lang)
+            max_value=10,
+            value=1,
+            help=translate_text("Number of interest rate periods for the mortgage", current_lang)
         )
+        
+        for i in range(num_rate_periods):
+            rate_col1, rate_col2 = st.columns([2, 1])
+            with rate_col1:
+                rate = translate_number_input(
+                    translate_text(f"Interest Rate {i+1} (%)", current_lang),
+                    current_lang,
+                    min_value=0.0,
+                    max_value=20.0,
+                    value=4.0,
+                    step=0.1,
+                    help=translate_text(f"Annual interest rate for period {i+1}", current_lang)
+                )
+            with rate_col2:
+                years = translate_number_input(
+                    translate_text(f"Years for Rate {i+1}", current_lang),
+                    current_lang,
+                    min_value=1,
+                    max_value=40,
+                    value=30,
+                    help=translate_text(f"Number of years for interest rate {i+1}", current_lang)
+                )
+            interest_rates.append({'rate': rate, 'years': years})
         
         holding_period = translate_number_input(
             translate_text("Expected Holding Period (Years)", current_lang),
@@ -235,11 +308,11 @@ def show():
         )
 
     # Calculate initial mortgage details
-    monthly_payment, loan_amount = calculate_loan_details(
+    monthly_payments, loan_amount = calculate_loan_details(
         purchase_price,
         down_payment_pct,
-        interest_rate,
-        loan_years
+        interest_rates,
+        holding_period
     )
 
     # Display initial mortgage details
@@ -255,13 +328,13 @@ def show():
     with mort_col2:
         st.metric(
             translate_text("Monthly Payment", current_lang),
-            f"${monthly_payment:,.2f}",
+            f"${monthly_payments[0]:,.2f}",
             help=translate_text("Monthly mortgage payment", current_lang)
         )
     with mort_col3:
         st.metric(
             translate_text("Annual Payment", current_lang),
-            f"${monthly_payment * 12:,.2f}",
+            f"${monthly_payments[0] * 12:,.2f}",
             help=translate_text("Total yearly mortgage payment", current_lang)
         )
     with mort_col4:
@@ -417,7 +490,7 @@ def show():
     
     monthly_cash_flow = (
         monthly_effective_income -
-        monthly_payment -
+        monthly_payments[0] -
         monthly_operating_expenses
     )
     
@@ -508,22 +581,17 @@ def show():
     # Calculate loan amortization to track principal paid
     loan_schedule = []
     remaining_balance = loan_amount
-    total_principal_paid = 0
-    principal_paid_by_year = [0]  # Start with 0 for year 0
-    
-    for _ in range(loan_years * 12):
-        interest_payment = remaining_balance * (interest_rate / (12 * 100))
-        principal_payment = monthly_payment - interest_payment
+    for month in range(len(monthly_payments)):
+        current_rate = get_rate_for_month(interest_rates, month)
+        interest_payment = remaining_balance * (current_rate / (12 * 100))
+        principal_payment = monthly_payments[month] - interest_payment
         remaining_balance -= principal_payment
-        total_principal_paid += principal_payment
-        
-        if len(principal_paid_by_year) < ((_ + 1) // 12 + 1):
-            principal_paid_by_year.append(total_principal_paid)
+        loan_schedule.append({
+            'Principal': principal_payment,
+            'Interest': interest_payment,
+            'Balance': remaining_balance
+        })
     
-    # Fill remaining years after loan is paid off
-    while len(principal_paid_by_year) <= holding_period:
-        principal_paid_by_year.append(total_principal_paid)
-
     # Calculate annual cash flows with rent increase and expense inflation
     annual_cash_flows = []
     for year in range(holding_period):
@@ -553,7 +621,7 @@ def show():
         )
         
         # Only include mortgage payment if still within loan term
-        annual_mortgage = monthly_payment * 12 if year < loan_years else 0
+        annual_mortgage = monthly_payments[year * 12] * 12 if year < len(monthly_payments) // 12 else 0
         
         year_cash_flow = (
             year_effective_income -
@@ -569,7 +637,7 @@ def show():
     
     for year in range(holding_period + 1):
         # Base equity is down payment + principal paid - closing costs
-        base_equity = down_payment_amount + principal_paid_by_year[year] - closing_costs['total']
+        base_equity = down_payment_amount + sum([loan['Principal'] for loan in loan_schedule[:year*12]]) - closing_costs['total']
         
         # Add appreciation for each scenario
         conservative_appreciation = purchase_price * ((1 + conservative_rate/100)**year - 1)
@@ -690,9 +758,10 @@ def show():
     # Calculate loan schedule
     loan_schedule = []
     remaining_balance = loan_amount
-    for _ in range(loan_years * 12):
-        interest_payment = remaining_balance * (interest_rate / (12 * 100))
-        principal_payment = monthly_payment - interest_payment
+    for month in range(len(monthly_payments)):
+        current_rate = get_rate_for_month(interest_rates, month)
+        interest_payment = remaining_balance * (current_rate / (12 * 100))
+        principal_payment = monthly_payments[month] - interest_payment
         remaining_balance -= principal_payment
         loan_schedule.append({
             'Principal': principal_payment,
@@ -713,7 +782,7 @@ def show():
     employment_tax_rate = (employment_total_tax / annual_salary * 100) if annual_salary > 0 else 0
     
     # Calculate combined income tax
-    total_taxable_income = annual_salary + (monthly_rent * 12 * (1 - vacancy_rate/100) + other_income * 12 - (monthly_payment * 12 + monthly_operating_expenses * 12))
+    total_taxable_income = annual_salary + (monthly_rent * 12 * (1 - vacancy_rate/100) + other_income * 12 - (monthly_payments[0] * 12 + monthly_operating_expenses * 12))
     combined_tax_deductions = calculate_tax_brackets(total_taxable_income)
     combined_total_tax = sum(combined_tax_deductions.values())
     combined_after_tax = total_taxable_income - combined_total_tax
@@ -765,7 +834,7 @@ def show():
             help=translate_text("Combined income from employment and rental property", current_lang)
         )
         st.caption(f"Employment: ${annual_salary:,.2f}")
-        st.caption(f"Rental: ${(monthly_rent * 12 * (1 - vacancy_rate/100) + other_income * 12 - (monthly_payment * 12 + monthly_operating_expenses * 12)):,.2f}")
+        st.caption(f"Rental: ${(monthly_rent * 12 * (1 - vacancy_rate/100) + other_income * 12 - (monthly_payments[0] * 12 + monthly_operating_expenses * 12)):,.2f}")
     with combined_col2:
         st.metric(
             translate_text("Tax Paid", current_lang),
@@ -821,13 +890,13 @@ def show():
             year_hoa = hoa_fees * (1 + hoa_inflation/100)**year * 12
             
             # Calculate mortgage components for this year
-            if year < loan_years and year * 12 < len(df_loan):
+            if year < len(monthly_payments) // 12 and year * 12 < len(df_loan):
                 start_idx = year * 12
                 end_idx = min(start_idx + 12, len(df_loan))
                 year_interest = df_loan['Interest'][start_idx:end_idx].sum()
                 # If we have partial year data, annualize the mortgage payment
                 months_in_year = end_idx - start_idx
-                year_mortgage = monthly_payment * months_in_year
+                year_mortgage = monthly_payments[start_idx] * months_in_year
             else:
                 year_interest = 0
                 year_mortgage = 0
@@ -923,7 +992,7 @@ def show():
     
     # Calculate yearly equity from loan paydown
     yearly_equity = []
-    for year in range(loan_years):
+    for year in range(len(monthly_payments) // 12):
         start_idx = year * 12
         end_idx = start_idx + 12
         yearly_principal = df_loan['Principal'][start_idx:end_idx].sum()
@@ -982,12 +1051,12 @@ def show():
             optimistic_value = purchase_price * (1 + optimistic_rate/100)**year
             
             # Calculate mortgage components for this year
-            if year < loan_years:
+            if year < len(monthly_payments) // 12:
                 start_idx = year * 12
                 end_idx = start_idx + 12
                 year_principal = df_loan['Principal'][start_idx:end_idx].sum()
                 year_interest = df_loan['Interest'][start_idx:end_idx].sum()
-                year_mortgage = monthly_payment * 12
+                year_mortgage = sum(monthly_payments[start_idx:end_idx])
             else:
                 year_principal = 0
                 year_interest = 0
