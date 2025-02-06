@@ -45,6 +45,33 @@ def get_all_translatable_text() -> List[str]:
         "Monthly Investment ($)",
         "Investment Return Rate (%)",
         
+        # ETF Comparison labels
+        "ETF Symbol",
+        "Initial Investment Amount ($)",
+        "Investment Period (Years)",
+        "Annual Additional Investment ($)",
+        "ETF Metrics",
+        "Investment Comparison",
+        "Total Return",
+        "Annual Return",
+        "Annual Dividend Income",
+        "Current Investment Value",
+        "Volatility",
+        "Investment Value Over Time",
+        "Investment Growth Over Time",
+        "Investment Value",
+        "Total Contribution",
+        "Yearly Performance",
+        "Reinvest Dividends",
+        "Total Dividends Earned",
+        
+        # Tax related text
+        "Tax Breakdown",
+        "Annual Income:",
+        "Total Tax:",
+        "Net Income:",
+        "Tax Brackets Breakdown",
+        
         # Help texts
         "Total yearly household income before taxes",
         "Number of years to simulate the comparison",

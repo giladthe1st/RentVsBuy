@@ -8,6 +8,7 @@ class CalculatorType(Enum):
     """Enum for different calculator types."""
     RENT_VS_BUY = auto()
     INVESTMENT_PROPERTY = auto()
+    ETF_COMPARISON = auto()
 
 @dataclass
 class NavigationItem:
@@ -35,6 +36,12 @@ class Navigation:
                 label="Investment Property",
                 icon="💰",
                 help_text="Analyze investment property opportunities"
+            ),
+            NavigationItem(
+                id=CalculatorType.ETF_COMPARISON,
+                label="ETF Comparison",
+                icon="📈",
+                help_text="Compare real estate investment with ETF returns"
             )
         ]
         
