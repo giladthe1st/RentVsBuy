@@ -41,6 +41,37 @@ def calculate_irr(initial_investment: float, cash_flows: List[float], final_valu
     except:
         return 0.0  # Return 0% if IRR calculation fails
 
+def calculate_tax_brackets(annual_salary: float) -> Dict[str, float]:
+    """Calculate tax deductions based on 2025 tax brackets."""
+    brackets = [
+        (47564, 0.2580),
+        (57375, 0.2775),
+        (101200, 0.3325),
+        (114750, 0.3790),
+        (177882, 0.4340),
+        (200000, 0.4672),
+        (253414, 0.4758),
+        (400000, 0.5126),
+        (float('inf'), 0.5040)
+    ]
+    
+    tax_paid = {}
+    remaining_income = annual_salary
+    prev_bracket = 0
+    
+    for bracket, rate in brackets:
+        if remaining_income <= 0:
+            break
+            
+        taxable_amount = min(remaining_income, bracket - prev_bracket)
+        DOLLAR = "&#36;"
+        bracket_range = DOLLAR + str(prev_bracket) + " up to " + DOLLAR + str(bracket)
+        tax_paid[bracket_range] = taxable_amount * rate
+        remaining_income -= taxable_amount
+        prev_bracket = bracket
+    
+    return tax_paid
+
 def show():
     """Main function to display the investment property calculator."""
     
@@ -137,14 +168,53 @@ def show():
     with col2:
         st.subheader(translate_text("Income Analysis", current_lang))
         
-        monthly_rent = translate_number_input(
-            translate_text("Expected Monthly Rent ($)", current_lang),
-            current_lang,
-            min_value=0,
-            value=2000,
-            step=100,
-            help=translate_text("Enter the expected monthly rental income", current_lang)
-        )
+        # Create columns for salary and its increase rate
+        salary_col1, salary_col2 = st.columns([2, 1])
+        
+        with salary_col1:
+            # Annual salary input
+            annual_salary = translate_number_input(
+                translate_text("Annual Salary ($)", current_lang),
+                current_lang,
+                min_value=0,
+                value=80000,
+                step=1000,
+                help=translate_text("Enter your annual salary for tax calculation", current_lang)
+            )
+        
+        with salary_col2:
+            salary_inflation = translate_number_input(
+                translate_text("Annual Increase (%)", current_lang),
+                current_lang,
+                min_value=0.0,
+                max_value=20.0,
+                value=3.0,
+                step=0.1,
+                help=translate_text("Expected annual percentage increase in salary", current_lang)
+            )
+        
+        # Create columns for rent and its increase rate
+        rent_col1, rent_col2 = st.columns([2, 1])
+        
+        with rent_col1:
+            monthly_rent = translate_number_input(
+                translate_text("Expected Monthly Rent ($)", current_lang),
+                current_lang,
+                min_value=0,
+                value=2000,
+                step=100,
+                help=translate_text("Enter the expected monthly rental income", current_lang)
+            )
+        
+        with rent_col2:
+            annual_rent_increase = translate_number_input(
+                translate_text("Annual Increase (%)", current_lang),
+                current_lang,
+                min_value=0,
+                max_value=10,
+                value=3,
+                help=translate_text("Expected annual percentage increase in rental income", current_lang)
+            )
         
         other_income = translate_number_input(
             translate_text("Other Monthly Income ($)", current_lang),
@@ -162,15 +232,6 @@ def show():
             max_value=20,
             value=5,
             help=translate_text("Expected percentage of time the property will be vacant", current_lang)
-        )
-        
-        annual_rent_increase = translate_number_input(
-            translate_text("Annual Rent Increase (%)", current_lang),
-            current_lang,
-            min_value=0,
-            max_value=10,
-            value=3,
-            help=translate_text("Expected annual percentage increase in rental income", current_lang)
         )
 
     # Calculate initial mortgage details
@@ -626,10 +687,7 @@ def show():
     
     st.plotly_chart(fig, use_container_width=True)
 
-    # Cash Flow Analysis
-    st.subheader(translate_text("Cash Flow Analysis", current_lang))
-    
-    # Calculate monthly principal and interest for each payment
+    # Calculate loan schedule
     loan_schedule = []
     remaining_balance = loan_amount
     for _ in range(loan_years * 12):
@@ -644,6 +702,224 @@ def show():
     
     # Create a DataFrame for the loan schedule
     df_loan = pd.DataFrame(loan_schedule)
+
+    # Income Tax Analysis
+    st.subheader(translate_text("Income Tax Analysis", current_lang))
+    
+    # Calculate employment income tax
+    employment_tax_deductions = calculate_tax_brackets(annual_salary)
+    employment_total_tax = sum(employment_tax_deductions.values())
+    employment_after_tax = annual_salary - employment_total_tax
+    employment_tax_rate = (employment_total_tax / annual_salary * 100)
+    
+    # Calculate combined income tax
+    total_taxable_income = annual_salary + (monthly_rent * 12 * (1 - vacancy_rate/100) + other_income * 12 - (monthly_payment * 12 + monthly_operating_expenses * 12))
+    combined_tax_deductions = calculate_tax_brackets(total_taxable_income)
+    combined_total_tax = sum(combined_tax_deductions.values())
+    combined_after_tax = total_taxable_income - combined_total_tax
+    combined_tax_rate = (combined_total_tax / total_taxable_income * 100)
+    
+    # Display employment income analysis
+    st.markdown("#### Employment Income Only")
+    emp_col1, emp_col2, emp_col3, emp_col4 = st.columns(4)
+    
+    with emp_col1:
+        st.metric(
+            translate_text("Income", current_lang),
+            f"${annual_salary:,.2f}",
+            help=translate_text("Your annual salary before tax", current_lang)
+        )
+    with emp_col2:
+        st.metric(
+            translate_text("Tax Paid", current_lang),
+            f"${employment_total_tax:,.2f}",
+            help=translate_text("Total income tax on employment income", current_lang)
+        )
+    with emp_col3:
+        st.metric(
+            translate_text("After-Tax Income", current_lang),
+            f"${employment_after_tax:,.2f}",
+            help=translate_text("Your employment income after tax", current_lang)
+        )
+    with emp_col4:
+        st.metric(
+            translate_text("Effective Tax Rate", current_lang),
+            f"{employment_tax_rate:.2f}%",
+            help=translate_text("Your effective tax rate on employment income", current_lang)
+        )
+        
+    # Display employment income tax brackets
+    with st.expander(translate_text("View Employment Income Tax Breakdown", current_lang)):
+        for bracket, amount in employment_tax_deductions.items():
+            if amount > 0:
+                st.write(f"{bracket}: **${amount:,.2f}**")
+    
+    # Display combined income analysis
+    st.markdown("#### With Rental Property Income")
+    combined_col1, combined_col2, combined_col3, combined_col4 = st.columns(4)
+    
+    with combined_col1:
+        st.metric(
+            translate_text("Total Income", current_lang),
+            f"${total_taxable_income:,.2f}",
+            help=translate_text("Combined income from employment and rental property", current_lang)
+        )
+        st.caption(f"Employment: ${annual_salary:,.2f}")
+        st.caption(f"Rental: ${(monthly_rent * 12 * (1 - vacancy_rate/100) + other_income * 12 - (monthly_payment * 12 + monthly_operating_expenses * 12)):,.2f}")
+    with combined_col2:
+        st.metric(
+            translate_text("Tax Paid", current_lang),
+            f"${combined_total_tax:,.2f}",
+            help=translate_text("Total income tax on combined income", current_lang)
+        )
+        tax_difference = combined_total_tax - employment_total_tax
+        st.caption(f"Additional Tax: ${tax_difference:,.2f}")
+    with combined_col3:
+        st.metric(
+            translate_text("After-Tax Income", current_lang),
+            f"${combined_after_tax:,.2f}",
+            help=translate_text("Your total income after tax", current_lang)
+        )
+        income_difference = combined_after_tax - employment_after_tax
+        st.caption(f"Additional Income: ${income_difference:,.2f}")
+    with combined_col4:
+        st.metric(
+            translate_text("Effective Tax Rate", current_lang),
+            f"{combined_tax_rate:.2f}%",
+            help=translate_text("Your effective tax rate on total income", current_lang)
+        )
+        rate_difference = combined_tax_rate - employment_tax_rate
+        st.caption(f"Rate Change: {rate_difference:+.2f}%")
+    
+    # Display combined income tax brackets
+    with st.expander(translate_text("View Combined Income Tax Breakdown", current_lang)):
+        for bracket, amount in combined_tax_deductions.items():
+            if amount > 0:
+                st.write(f"{bracket}: **${amount:,.2f}**")
+
+    # Yearly Income Tax Analysis
+    st.markdown("___")
+    st.subheader(translate_text("Yearly Income Tax Analysis", current_lang))
+    
+    with st.expander(translate_text("View Detailed Yearly Tax Breakdown", current_lang)):
+        yearly_tax_data = []
+        
+        # Calculate yearly values
+        for year in range(holding_period):
+            # Calculate rental income for this year with annual increases
+            year_monthly_rent = monthly_rent * (1 + annual_rent_increase/100)**year
+            year_monthly_income = year_monthly_rent + other_income
+            year_monthly_vacancy_loss = year_monthly_income * (vacancy_rate / 100)
+            year_rental_income = (year_monthly_income - year_monthly_vacancy_loss) * 12
+            
+            # Calculate expenses for this year
+            year_property_tax = property_tax * (1 + property_tax_inflation/100)**year
+            year_insurance = insurance * (1 + insurance_inflation/100)**year
+            year_utilities = utilities * (1 + utilities_inflation/100)**year * 12
+            year_mgmt_fee = mgmt_fee * (1 + mgmt_fee_inflation/100)**year * 12
+            year_maintenance = monthly_maintenance * 12 * (1 + conservative_rate/100)**year
+            year_hoa = hoa_fees * (1 + hoa_inflation/100)**year * 12
+            
+            # Calculate mortgage components for this year
+            if year < loan_years and year * 12 < len(df_loan):
+                start_idx = year * 12
+                end_idx = min(start_idx + 12, len(df_loan))
+                year_interest = df_loan['Interest'][start_idx:end_idx].sum()
+                # If we have partial year data, annualize the mortgage payment
+                months_in_year = end_idx - start_idx
+                year_mortgage = monthly_payment * months_in_year
+            else:
+                year_interest = 0
+                year_mortgage = 0
+            
+            # Calculate operating expenses
+            year_operating_expenses = (
+                year_property_tax +
+                year_insurance +
+                year_utilities +
+                year_mgmt_fee +
+                year_maintenance +
+                year_hoa
+            )
+            
+            # Calculate net rental income
+            year_net_rental = year_rental_income - year_operating_expenses - year_mortgage
+            
+            # Assume salary increases with inflation (use salary_inflation instead of conservative_rate)
+            year_salary = annual_salary * (1 + salary_inflation/100)**year
+            
+            # Calculate taxes for employment income only
+            year_employment_tax = calculate_tax_brackets(year_salary)
+            year_employment_total_tax = sum(year_employment_tax.values())
+            year_employment_after_tax = year_salary - year_employment_total_tax
+            year_employment_tax_rate = (year_employment_total_tax / year_salary * 100)
+            
+            # Calculate taxes for combined income
+            year_total_income = year_salary + year_net_rental
+            year_combined_tax = calculate_tax_brackets(year_total_income)
+            year_combined_total_tax = sum(year_combined_tax.values())
+            year_combined_after_tax = year_total_income - year_combined_total_tax
+            year_combined_tax_rate = (year_combined_total_tax / year_total_income * 100)
+            
+            # Calculate differences
+            year_additional_tax = year_combined_total_tax - year_employment_total_tax
+            year_additional_after_tax = year_combined_after_tax - year_employment_after_tax
+            year_tax_rate_change = year_combined_tax_rate - year_employment_tax_rate
+            
+            yearly_tax_data.append({
+                "Year": year + 1,
+                "Employment Income": f"${year_salary:,.2f}",
+                "Employment Tax": f"${year_employment_total_tax:,.2f}",
+                "Employment After-Tax": f"${year_employment_after_tax:,.2f}",
+                "Employment Tax Rate": f"{year_employment_tax_rate:.2f}%",
+                "Net Rental Income": f"${year_net_rental:,.2f}",
+                "Total Income": f"${year_total_income:,.2f}",
+                "Total Tax": f"${year_combined_total_tax:,.2f}",
+                "Total After-Tax": f"${year_combined_after_tax:,.2f}",
+                "Total Tax Rate": f"{year_combined_tax_rate:.2f}%",
+                "Additional Tax": f"${year_additional_tax:,.2f}",
+                "Additional After-Tax": f"${year_additional_after_tax:,.2f}",
+                "Tax Rate Change": f"{year_tax_rate_change:+.2f}%"
+            })
+        
+        df_tax = pd.DataFrame(yearly_tax_data)
+        st.dataframe(df_tax, use_container_width=True)
+        
+        # Create a line chart showing the progression of after-tax income
+        fig = go.Figure()
+        
+        # Extract numeric values from formatted strings
+        employment_after_tax = [float(row['Employment After-Tax'].replace('$', '').replace(',', '')) 
+                              for row in yearly_tax_data]
+        total_after_tax = [float(row['Total After-Tax'].replace('$', '').replace(',', '')) 
+                          for row in yearly_tax_data]
+        years = [row['Year'] for row in yearly_tax_data]
+        
+        fig.add_trace(go.Scatter(
+            x=years,
+            y=employment_after_tax,
+            name='Employment Only',
+            line=dict(color='blue')
+        ))
+        
+        fig.add_trace(go.Scatter(
+            x=years,
+            y=total_after_tax,
+            name='With Rental Income',
+            line=dict(color='green')
+        ))
+        
+        fig.update_layout(
+            title='After-Tax Income Over Time',
+            xaxis_title='Year',
+            yaxis_title='After-Tax Income ($)',
+            hovermode='x unified'
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
+
+    # Cash Flow Analysis
+    st.subheader(translate_text("Cash Flow Analysis", current_lang))
     
     # Calculate yearly equity from loan paydown
     yearly_equity = []
@@ -697,7 +973,7 @@ def show():
             year_insurance = insurance * (1 + insurance_inflation/100)**year
             year_utilities = utilities * (1 + utilities_inflation/100)**year * 12
             year_mgmt_fee = mgmt_fee * (1 + mgmt_fee_inflation/100)**year * 12
-            year_maintenance = monthly_maintenance * 12 * (1 + conservative_rate/100)**year
+            year_maintenance = monthly_maintenance * 12 * (1 + conservative_rate/100)**year  # Maintenance increases with property value
             year_hoa = hoa_fees * (1 + hoa_inflation/100)**year * 12
             
             # Calculate property values for each scenario
