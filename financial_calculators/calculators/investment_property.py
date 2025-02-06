@@ -710,14 +710,14 @@ def show():
     employment_tax_deductions = calculate_tax_brackets(annual_salary)
     employment_total_tax = sum(employment_tax_deductions.values())
     employment_after_tax = annual_salary - employment_total_tax
-    employment_tax_rate = (employment_total_tax / annual_salary * 100)
+    employment_tax_rate = (employment_total_tax / annual_salary * 100) if annual_salary > 0 else 0
     
     # Calculate combined income tax
     total_taxable_income = annual_salary + (monthly_rent * 12 * (1 - vacancy_rate/100) + other_income * 12 - (monthly_payment * 12 + monthly_operating_expenses * 12))
     combined_tax_deductions = calculate_tax_brackets(total_taxable_income)
     combined_total_tax = sum(combined_tax_deductions.values())
     combined_after_tax = total_taxable_income - combined_total_tax
-    combined_tax_rate = (combined_total_tax / total_taxable_income * 100)
+    combined_tax_rate = (combined_total_tax / total_taxable_income * 100) if total_taxable_income > 0 else 0
     
     # Display employment income analysis
     st.markdown("#### Employment Income Only")
@@ -852,14 +852,14 @@ def show():
             year_employment_tax = calculate_tax_brackets(year_salary)
             year_employment_total_tax = sum(year_employment_tax.values())
             year_employment_after_tax = year_salary - year_employment_total_tax
-            year_employment_tax_rate = (year_employment_total_tax / year_salary * 100)
+            year_employment_tax_rate = (year_employment_total_tax / year_salary * 100) if year_salary > 0 else 0
             
             # Calculate taxes for combined income
             year_total_income = year_salary + year_net_rental
             year_combined_tax = calculate_tax_brackets(year_total_income)
             year_combined_total_tax = sum(year_combined_tax.values())
             year_combined_after_tax = year_total_income - year_combined_total_tax
-            year_combined_tax_rate = (year_combined_total_tax / year_total_income * 100)
+            year_combined_tax_rate = (year_combined_total_tax / year_total_income * 100) if year_total_income > 0 else 0
             
             # Calculate differences
             year_additional_tax = year_combined_total_tax - year_employment_total_tax
