@@ -7,30 +7,25 @@ from datetime import datetime, timedelta
 from typing import Dict, Tuple, List
 from translation_utils import translate_text, translate_number_input
 from dateutil.relativedelta import relativedelta
+from functools import lru_cache
 
+@st.cache_data(ttl=3600)  # Cache data for 1 hour
 def fetch_etf_data(symbol: str, start_date: datetime, end_date: datetime) -> Tuple[pd.DataFrame, Dict]:
-    """Fetch historical ETF data."""
+    """Fetch historical ETF data with caching."""
     try:
-        # Get ETF data
         etf = yf.Ticker(symbol)
-        
-        # Get historical data with adjusted prices
         hist_data = etf.history(start=start_date, end=end_date, auto_adjust=True)
         
-        # Check if we have any data
         if hist_data.empty:
             st.error(f"No historical data available for '{symbol}'. Please check the symbol and try again.")
             return pd.DataFrame(), {}
         
-        # Get ETF info - don't error if this fails
         try:
             info = etf.info
         except:
             info = {'shortName': symbol}
             
-        actual_years = (hist_data.index[-1] - hist_data.index[0]).days / 365
-        info['available_years'] = actual_years
-        
+        info['available_years'] = (hist_data.index[-1] - hist_data.index[0]).days / 365
         return hist_data, info
         
     except Exception as e:
@@ -38,83 +33,61 @@ def fetch_etf_data(symbol: str, start_date: datetime, end_date: datetime) -> Tup
         return pd.DataFrame(), {}
 
 def calculate_etf_metrics(hist_data: pd.DataFrame, initial_investment: float, annual_contribution: float = 0, reinvest_dividends: bool = True) -> Dict:
-    """Calculate key ETF metrics."""
+    """Calculate key ETF metrics using vectorized operations."""
     if hist_data.empty:
         return {}
     
-    # Calculate total return including dividends
-    start_price = hist_data['Close'].iloc[0]  # Already adjusted for splits
-    end_price = hist_data['Close'].iloc[-1]   # Already adjusted for splits
-    
-    # Calculate initial shares (using split-adjusted price)
-    initial_shares = initial_investment / start_price
-    shares = initial_shares
-    
-    # Create daily value tracking DataFrame
+    # Initialize DataFrame with required columns
     daily_data = pd.DataFrame(index=hist_data.index)
     daily_data['Close'] = hist_data['Close']
-    daily_data['Shares'] = initial_shares
-    daily_data['Value'] = daily_data['Close'] * daily_data['Shares']
     daily_data['Dividends'] = hist_data['Dividends']
-    daily_data['Cumulative_Dividends'] = 0.0
-    daily_data['Contributions'] = 0.0
-    daily_data['Cumulative_Contributions'] = initial_investment
     
-    # Track running totals
-    total_dividends = 0
-    total_cash_dividends = 0
-    total_contributions = initial_investment
+    # Calculate initial shares
+    initial_shares = initial_investment / daily_data['Close'].iloc[0]
     
-    # Get the start year
-    start_year = hist_data.index[0].year
-    current_year = start_year
+    # Create year markers for contributions
+    daily_data['Year'] = daily_data.index.year
+    year_starts = daily_data.groupby('Year').head(1).index[1:]  # Skip first year
     
-    # Process each day
-    for i in range(1, len(daily_data)):
-        current_date = daily_data.index[i]
-        
-        # Add annual contribution at the start of each year (except first year)
-        if current_date.year > current_year and annual_contribution > 0:
-            # Buy new shares with the contribution
-            new_shares = annual_contribution / daily_data['Close'].iloc[i]
-            daily_data['Shares'].iloc[i:] += new_shares
-            total_contributions += annual_contribution
-            daily_data['Contributions'].iloc[i] = annual_contribution
-            daily_data['Cumulative_Contributions'].iloc[i:] = total_contributions
-            current_year = current_date.year
-        
-        # Get dividend for the day
-        dividend = daily_data['Dividends'].iloc[i]
-        if dividend > 0:
-            dividend_amount = dividend * daily_data['Shares'].iloc[i-1]
-            total_cash_dividends += dividend_amount
-            
-            if reinvest_dividends:
-                # Calculate new shares from dividend reinvestment
-                new_shares = dividend_amount / daily_data['Close'].iloc[i]
-                daily_data['Shares'].iloc[i:] += new_shares
-                total_dividends += dividend_amount
-            
-            daily_data['Cumulative_Dividends'].iloc[i:] = total_cash_dividends
-        else:
-            daily_data['Shares'].iloc[i] = daily_data['Shares'].iloc[i-1]
+    # Initialize shares array
+    shares = np.full(len(daily_data), initial_shares)
     
-    # Calculate daily values
+    # Calculate contributions
+    contributions = np.zeros(len(daily_data))
+    if annual_contribution > 0:
+        for date in year_starts:
+            idx = daily_data.index.get_loc(date)
+            new_shares = annual_contribution / daily_data['Close'].iloc[idx]
+            shares[idx:] += new_shares
+            contributions[idx] = annual_contribution
+    
+    daily_data['Shares'] = shares
+    daily_data['Contributions'] = contributions
+    daily_data['Cumulative_Contributions'] = np.cumsum(contributions) + initial_investment
+    
+    # Process dividends efficiently
+    if reinvest_dividends:
+        dividend_shares = (daily_data['Dividends'] * daily_data['Shares']).fillna(0) / daily_data['Close']
+        daily_data['Dividend_Shares'] = dividend_shares
+        daily_data['Shares'] = daily_data['Shares'] + dividend_shares.cumsum()
+    
+    # Calculate values
     daily_data['Value'] = daily_data['Close'] * daily_data['Shares']
+    daily_data['Cumulative_Dividends'] = (daily_data['Dividends'] * daily_data['Shares']).fillna(0).cumsum()
     
-    # Calculate final values
+    # Calculate metrics
     final_value = daily_data['Value'].iloc[-1]
+    total_contributions = daily_data['Cumulative_Contributions'].iloc[-1]
     total_return = ((final_value - total_contributions) / total_contributions) * 100
     
-    # Calculate annualized return (CAGR)
     years = (hist_data.index[-1] - hist_data.index[0]).days / 365.25
     annual_return = ((final_value / initial_investment) ** (1/years) - 1) * 100
     
-    # Calculate volatility using daily returns (annualized)
-    daily_returns = daily_data['Close'].pct_change().dropna()
+    # Calculate volatility using vectorized operations
+    daily_returns = daily_data['Close'].pct_change()
     volatility = daily_returns.std() * np.sqrt(252) * 100
     
-    # Group by year for annual metrics
+    # Calculate yearly metrics efficiently
     yearly_data = daily_data.resample('Y').agg({
         'Close': 'last',
         'Shares': 'last',
@@ -125,11 +98,8 @@ def calculate_etf_metrics(hist_data: pd.DataFrame, initial_investment: float, an
         'Cumulative_Contributions': 'last'
     })
     
-    # Calculate average annual dividend
-    if years > 0:
-        avg_annual_cash_dividend = total_cash_dividends / years
-    else:
-        avg_annual_cash_dividend = 0
+    total_cash_dividends = daily_data['Cumulative_Dividends'].iloc[-1]
+    avg_annual_cash_dividend = total_cash_dividends / years if years > 0 else 0
     
     metrics = {
         'total_return': total_return,
@@ -138,7 +108,7 @@ def calculate_etf_metrics(hist_data: pd.DataFrame, initial_investment: float, an
         'current_value': final_value,
         'annual_dividend_income': avg_annual_cash_dividend,
         'current_shares': daily_data['Shares'].iloc[-1],
-        'total_dividends': total_dividends,
+        'total_dividends': total_cash_dividends,
         'total_cash_dividends': total_cash_dividends,
         'total_contributions': total_contributions,
         'initial_shares': initial_shares,
@@ -146,45 +116,52 @@ def calculate_etf_metrics(hist_data: pd.DataFrame, initial_investment: float, an
         'yearly_data': yearly_data
     }
     
-    # Add debug information in an expander
+    _display_debug_info(metrics, hist_data, initial_investment, annual_contribution, yearly_data)
+    return metrics
+
+def _display_debug_info(metrics: Dict, hist_data: pd.DataFrame, initial_investment: float, annual_contribution: float, yearly_data: pd.DataFrame) -> None:
+    """Display debug information in a streamlit expander."""
     with st.expander("Show Calculation Details"):
+        years = (hist_data.index[-1] - hist_data.index[0]).days / 365.25
+        
         st.write("Initial Investment Details:")
-        st.write(f"- Initial Investment: ${initial_investment:,.2f}")
-        st.write(f"- Annual Contribution: ${annual_contribution:,.2f}")
-        st.write(f"- Start Price (Split Adjusted): ${start_price:.2f}")
-        st.write(f"- Initial Shares: {initial_shares:,.2f}")
-        st.write(f"- Start Date: {hist_data.index[0].strftime('%Y-%m-%d')}")
-        st.write(f"- End Date: {hist_data.index[-1].strftime('%Y-%m-%d')}")
-        st.write(f"- Total Years: {years:.2f}")
+        st.write({
+            'Initial Investment': f"${initial_investment:,.2f}",
+            'Annual Contribution': f"${annual_contribution:,.2f}",
+            'Start Price': f"${hist_data['Close'].iloc[0]:.2f}",
+            'Initial Shares': f"{metrics['initial_shares']:,.2f}",
+            'Date Range': f"{hist_data.index[0].strftime('%Y-%m-%d')} to {hist_data.index[-1].strftime('%Y-%m-%d')}",
+            'Total Years': f"{years:.2f}"
+        })
         
         st.write("\nYearly Data:")
         for year, row in yearly_data.iterrows():
-            st.write(f"{year.year}:")
-            st.write(f"- Year-end price: ${row['Close']:.2f}")
-            st.write(f"- Year-end shares: {row['Shares']:,.2f}")
-            st.write(f"- Year-end value: ${row['Value']:,.2f}")
-            st.write(f"- Year contributions: ${row['Contributions']:,.2f}")
-            st.write(f"- Total contributions: ${row['Cumulative_Contributions']:,.2f}")
-            st.write(f"- Year dividends: ${row['Dividends'] * row['Shares']:,.2f}")
             yearly_return = (row['Value'] / yearly_data['Value'].shift(1).iloc[yearly_data.index.get_loc(year)] - 1) * 100 if yearly_data.index.get_loc(year) > 0 else 0
-            st.write(f"- Year Return: {yearly_return:.2f}%")
+            st.write({
+                'Year': year.year,
+                'Price': f"${row['Close']:.2f}",
+                'Shares': f"{row['Shares']:,.2f}",
+                'Value': f"${row['Value']:,.2f}",
+                'Contributions': f"${row['Contributions']:,.2f}",
+                'Total Contributions': f"${row['Cumulative_Contributions']:,.2f}",
+                'Dividends': f"${row['Dividends'] * row['Shares']:,.2f}",
+                'Return': f"{yearly_return:.2f}%"
+            })
         
-        st.write("\nFinal Calculations:")
-        st.write(f"- Total Contributions: ${total_contributions:,.2f}")
-        st.write(f"- Total Cash Dividends: ${total_cash_dividends:,.2f}")
-        st.write(f"- Number of Years: {years:.2f}")
-        st.write(f"- Average Annual Cash Dividend: ${avg_annual_cash_dividend:,.2f}")
-        st.write(f"- Current Shares: {daily_data['Shares'].iloc[-1]:,.2f}")
-        st.write(f"- End Price: ${end_price:.2f}")
-        st.write(f"- Final Value: ${final_value:,.2f}")
-        st.write(f"- CAGR: {annual_return:.2f}%")
-        st.write(f"- Daily Volatility: {daily_returns.std() * 100:.2f}%")
-        st.write(f"- Annualized Volatility: {volatility:.2f}%")
-    
-    return metrics
+        st.write("\nFinal Calculations:", {
+            'Total Contributions': f"${metrics['total_contributions']:,.2f}",
+            'Total Cash Dividends': f"${metrics['total_cash_dividends']:,.2f}",
+            'Years': f"{years:.2f}",
+            'Avg Annual Dividend': f"${metrics['annual_dividend_income']:,.2f}",
+            'Final Shares': f"{metrics['current_shares']:,.2f}",
+            'Final Value': f"${metrics['current_value']:,.2f}",
+            'CAGR': f"{metrics['annual_return']:.2f}%",
+            'Volatility': f"{metrics['volatility']:.2f}%"
+        })
 
+@lru_cache(maxsize=128)
 def calculate_tax_brackets(annual_salary: float) -> Dict[str, float]:
-    """Calculate tax deductions based on 2025 tax brackets."""
+    """Calculate tax deductions based on 2025 tax brackets with caching."""
     brackets = [
         (47564, 0.2580),
         (57375, 0.2775),
@@ -199,18 +176,16 @@ def calculate_tax_brackets(annual_salary: float) -> Dict[str, float]:
     
     tax_paid = {}
     remaining_income = annual_salary
-    prev_bracket = 0
+    prev_threshold = 0
     
-    for bracket, rate in brackets:
+    for threshold, rate in brackets:
         if remaining_income <= 0:
             break
             
-        taxable_amount = min(remaining_income, bracket - prev_bracket)
-        DOLLAR = "&#36;"
-        bracket_range = DOLLAR + str(prev_bracket) + " up to " + DOLLAR + str(bracket)
-        tax_paid[bracket_range] = taxable_amount * rate
+        taxable_amount = min(remaining_income, threshold - prev_threshold)
+        tax_paid[f"{rate*100:.2f}%"] = taxable_amount * rate
         remaining_income -= taxable_amount
-        prev_bracket = bracket
+        prev_threshold = threshold
     
     return tax_paid
 
