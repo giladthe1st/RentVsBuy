@@ -522,5 +522,46 @@ class TestInvestmentPropertyCalculator(unittest.TestCase):
         for i in range(len(results)-1):
             self.assertGreater(results[i], results[i+1])
 
+    def test_equity_buildup(self):
+        """Test equity buildup calculations including principal paydown and appreciation."""
+        test_params = {
+            'purchase_price': 300000,
+            'down_payment_pct': 20,
+            'interest_rates': [{'rate': 4.0, 'years': 30}],
+            'holding_period': 30,
+            'monthly_rent': 2000,
+            'annual_rent_increase': 3,
+            'operating_expenses': {
+                'property_tax': 3000,
+                'insurance': 1200,
+                'utilities': 0,
+                'mgmt_fee': 200,
+                'hoa_fees': 0
+            },
+            'vacancy_rate': 5
+        }
+        
+        metrics = calculate_investment_metrics(**test_params)
+        
+        # Test equity from principal payments
+        loan_amount = test_params['purchase_price'] * (1 - test_params['down_payment_pct']/100)
+        self.assertGreater(metrics['equity_from_principal'], 0)
+        self.assertLess(metrics['equity_from_principal'], loan_amount)  # Can't pay down more than borrowed
+        
+        # Test equity from appreciation
+        expected_appreciation = test_params['purchase_price'] * ((1 + test_params['annual_rent_increase']/100) ** test_params['holding_period'] - 1)
+        self.assertAlmostEqual(metrics['equity_from_appreciation'], expected_appreciation, places=2)
+        
+        # Test total equity
+        self.assertEqual(metrics['total_equity'], metrics['equity_from_principal'] + metrics['equity_from_appreciation'])
+        
+        # Test with no loan (100% down payment)
+        no_loan_params = test_params.copy()
+        no_loan_params['down_payment_pct'] = 100
+        no_loan_metrics = calculate_investment_metrics(**no_loan_params)
+        
+        self.assertEqual(no_loan_metrics['equity_from_principal'], 0)  # No loan means no principal payments
+        self.assertEqual(no_loan_metrics['equity_from_appreciation'], metrics['equity_from_appreciation'])  # Appreciation should be the same
+
 if __name__ == '__main__':
     unittest.main()
