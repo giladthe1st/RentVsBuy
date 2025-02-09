@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from typing import Dict, List
-from .data_models import PurchaseScenarioParams, RentalScenarioParams
+from financial_calculators.models.data_models import PurchaseScenarioParams, RentalScenarioParams
 
 @dataclass
 class YearlyPurchaseDetails:
