@@ -1,6 +1,6 @@
 import numpy as np
 from dataclasses import dataclass
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict, Tuple
 import streamlit as st
 from functools import lru_cache
 import numpy_financial as npf
@@ -278,6 +278,20 @@ def calculate_investment_metrics(purchase_price: float, down_payment_pct: float,
     # Calculate appreciation using the same rate as rent increases
     property_value = purchase_price * np.power(annual_rent_increase_factor, holding_period)
     
+    # Calculate equity buildup from principal payments
+    remaining_balance = loan_amount
+    for i, payment in enumerate(monthly_payments):
+        if payment == 0:  # Handle case where there's no loan
+            break
+        rate = get_rate_for_month(rates_tuple, i) / (12 * 100)  # Convert annual rate to monthly
+        interest = remaining_balance * rate
+        principal = payment - interest
+        remaining_balance -= principal
+    
+    equity_from_principal = loan_amount - remaining_balance
+    equity_from_appreciation = property_value - purchase_price
+    total_equity = equity_from_principal + equity_from_appreciation
+    
     # Calculate IRR
     irr_value = calculate_irr(total_investment, annual_cash_flows.tolist(), property_value)
     
@@ -289,7 +303,10 @@ def calculate_investment_metrics(purchase_price: float, down_payment_pct: float,
         'cap_rate': cap_rate,
         'coc_return': coc_return,
         'irr': irr_value,
-        'final_property_value': property_value
+        'final_property_value': property_value,
+        'equity_from_principal': equity_from_principal,
+        'equity_from_appreciation': equity_from_appreciation,
+        'total_equity': total_equity
     }
 
 def show():
