@@ -142,7 +142,7 @@ class ResultsVisualizer:
             # Home Equity Section
             st.markdown(f"+ Home Equity: ${purchase_details[-1].equity:,.2f}")
             with st.expander("View Home Equity Details"):
-                down_payment = purchase_details[0].property_value * (params.down_payment_pct / 100)
+                down_payment = purchase_details[0].property_value * (params['down_payment_pct'] / 100)
                 st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;• Down Payment: ${down_payment:,.2f}")
                 st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;• Principal Paid: ${total_principal_paid:,.2f}")
                 st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;• Property Appreciation: ${(purchase_details[-1].property_value - purchase_details[0].property_value):,.2f}")
@@ -166,18 +166,18 @@ class ResultsVisualizer:
             with st.expander("View Utilities Breakdown"):
                 # Get the utilities breakdown from yearly details
                 total_electricity = sum(
-                    year.yearly_utilities * (params.utilities.electricity.base / 
-                    (params.utilities.electricity.base + params.utilities.water.base + params.utilities.other.base))
+                    year.yearly_utilities * (params['utilities']['electricity']['base'] / 
+                    (params['utilities']['electricity']['base'] + params['utilities']['water']['base'] + params['utilities']['other']['base']))
                     for year in purchase_details
                 )
                 total_water = sum(
-                    year.yearly_utilities * (params.utilities.water.base / 
-                    (params.utilities.electricity.base + params.utilities.water.base + params.utilities.other.base))
+                    year.yearly_utilities * (params['utilities']['water']['base'] / 
+                    (params['utilities']['electricity']['base'] + params['utilities']['water']['base'] + params['utilities']['other']['base']))
                     for year in purchase_details
                 )
                 total_other = sum(
-                    year.yearly_utilities * (params.utilities.other.base / 
-                    (params.utilities.electricity.base + params.utilities.water.base + params.utilities.other.base))
+                    year.yearly_utilities * (params['utilities']['other']['base'] / 
+                    (params['utilities']['electricity']['base'] + params['utilities']['water']['base'] + params['utilities']['other']['base']))
                     for year in purchase_details
                 )
 
@@ -232,18 +232,18 @@ class ResultsVisualizer:
             with st.expander("View Utilities Breakdown"):
                 # Get the utilities breakdown from yearly details
                 total_electricity = sum(
-                    year.yearly_utilities * (params.utilities.electricity.base / 
-                    (params.utilities.electricity.base + params.utilities.water.base + params.utilities.other.base))
+                    year.yearly_utilities * (params['utilities']['electricity']['base'] / 
+                    (params['utilities']['electricity']['base'] + params['utilities']['water']['base'] + params['utilities']['other']['base']))
                     for year in rental_details
                 )
                 total_water = sum(
-                    year.yearly_utilities * (params.utilities.water.base / 
-                    (params.utilities.electricity.base + params.utilities.water.base + params.utilities.other.base))
+                    year.yearly_utilities * (params['utilities']['water']['base'] / 
+                    (params['utilities']['electricity']['base'] + params['utilities']['water']['base'] + params['utilities']['other']['base']))
                     for year in rental_details
                 )
                 total_other = sum(
-                    year.yearly_utilities * (params.utilities.other.base / 
-                    (params.utilities.electricity.base + params.utilities.water.base + params.utilities.other.base))
+                    year.yearly_utilities * (params['utilities']['other']['base'] / 
+                    (params['utilities']['electricity']['base'] + params['utilities']['water']['base'] + params['utilities']['other']['base']))
                     for year in rental_details
                 )
 
@@ -339,12 +339,15 @@ class ResultsVisualizer:
         rental_details: List[YearlyRentalDetails],
         years: int,
         purchase_params: Dict,
-        rental_params: Dict
+        rental_params: Dict,
+        save_output: bool = False
     ):
-        """Saves the calculation results to CSV files"""
+        """Saves the calculation results to CSV files if save_output is True"""
+        if not save_output:
+            return
 
         # Create output folder if it doesn't exist
-        output_folder = 'output_data'
+        output_folder = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'output_data')
         os.makedirs(output_folder, exist_ok=True)
 
         # Create DataFrames for each component
