@@ -1,10 +1,9 @@
 import streamlit as st
 import plotly.graph_objects as go
-from typing import List, Dict
 import pandas as pd
+from typing import List, Dict
 import os
 from models.rent_vs_buy_models import YearlyPurchaseDetails, YearlyRentalDetails
-from translation_utils import translate_text
 
 class ResultsVisualizer:
     @staticmethod
@@ -62,7 +61,7 @@ class ResultsVisualizer:
         fig.add_trace(go.Scatter(
             x=list(range(1, years + 1)),
             y=purchase_net_worth,
-            name=translate_text('Purchase Net Worth', current_lang),
+            name="Purchase Net Worth",
             line=dict(color='blue')
         ))
 
@@ -70,14 +69,14 @@ class ResultsVisualizer:
         fig.add_trace(go.Scatter(
             x=list(range(1, years + 1)),
             y=rental_net_worth,
-            name=translate_text('Rental Net Worth', current_lang),
+            name="Rental Net Worth",
             line=dict(color='red')
         ))
 
         fig.update_layout(
-            title=translate_text(f'Net Worth Comparison Over {years} Years', current_lang),
-            xaxis_title=translate_text('Years', current_lang),
-            yaxis_title=translate_text('Value ($)', current_lang),
+            title=f'Net Worth Comparison Over {years} Years',
+            xaxis_title='Years',
+            yaxis_title='Value ($)',
             height=600,
             showlegend=True,
             hovermode='x unified'
@@ -129,16 +128,16 @@ class ResultsVisualizer:
         )
 
         # Display the net positions with color coding
-        st.header(translate_text("Final Net Position", current_lang))
+        st.header("Final Net Position")
 
         # Display calculation breakdown
-        st.markdown(translate_text("### Calculation Breakdown", current_lang))
+        st.markdown("### Calculation Breakdown")
 
         col_calc1, col_calc2 = st.columns(2)
 
         with col_calc1:
-            st.markdown(translate_text("#### Purchase Scenario", current_lang))
-            st.markdown(translate_text("**Assets:**", current_lang))
+            st.markdown("#### Purchase Scenario")
+            st.markdown("**Assets:**")
 
             # Home Equity Section
             st.markdown(f"+ Home Equity: ${purchase_details[-1].equity:,.2f}")
@@ -155,7 +154,7 @@ class ResultsVisualizer:
                 st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;• Total New Investments: ${sum(year.new_investments for year in purchase_details):,.2f}")
                 st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;• Total Investment Returns: ${sum(year.investment_returns for year in purchase_details):,.2f}")
 
-            st.markdown(translate_text("**Costs:**", current_lang))
+            st.markdown("**Costs:**")
             st.markdown(f"- One-Time Closing Costs: ${total_closing_costs:,.2f}")
             st.markdown(f"- Total Interest: ${total_interest_paid:,.2f}")
             st.markdown(f"- Total Property Tax: ${total_property_tax:,.2f}")
@@ -188,7 +187,7 @@ class ResultsVisualizer:
 
             st.markdown("___")
             st.markdown(f"""
-            {translate_text("Total Costs Calculation", current_lang)}:
+            Total Costs Calculation:
             ```
             {total_closing_costs:,.2f} (Closing Costs)
             + {total_interest_paid:,.2f} (Interest)
@@ -202,9 +201,9 @@ class ResultsVisualizer:
             st.markdown("___")
 
             color = "green" if purchase_final_position > 0 else "red"
-            st.markdown(f'<p style="color: {color}; font-size: 20px;"><strong>{translate_text("Net Position", current_lang)}: ${purchase_final_position:,.2f}</strong></p>', unsafe_allow_html=True)
+            st.markdown(f'<p style="color: {color}; font-size: 20px;"><strong>Net Position: ${purchase_final_position:,.2f}</strong></p>', unsafe_allow_html=True)
             st.markdown(f"""
-            {translate_text("Final Position Calculation", current_lang)}:
+            Final Position Calculation:
             ```
             {purchase_details[-1].equity:,.2f} (Equity)
             + {purchase_details[-1].investment_portfolio:,.2f} (Investments)
@@ -214,8 +213,8 @@ class ResultsVisualizer:
             """)
 
         with col_calc2:
-            st.markdown(translate_text("#### Rental Scenario", current_lang))
-            st.markdown(translate_text("**Assets:**", current_lang))
+            st.markdown("#### Rental Scenario")
+            st.markdown("**Assets:**")
 
             # Investment Portfolio Section
             st.markdown(f"+ Investment Portfolio: ${rental_details[-1].investment_portfolio:,.2f}")
@@ -224,7 +223,7 @@ class ResultsVisualizer:
                 st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;• Total New Investments: ${sum(year.new_investments for year in rental_details):,.2f}")
                 st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;• Total Investment Returns: ${sum(year.investment_returns for year in rental_details):,.2f}")
 
-            st.markdown(translate_text("**Costs:**", current_lang))
+            st.markdown("**Costs:**")
             st.markdown(f"- Total Rent: ${total_rent_paid:,.2f}")
             st.markdown(f"- Total Insurance: ${total_rent_insurance:,.2f}")
 
@@ -254,7 +253,7 @@ class ResultsVisualizer:
 
             st.markdown("___")
             st.markdown(f"""
-            {translate_text("Total Costs Calculation", current_lang)}:
+            Total Costs Calculation:
             ```
             {total_rent_paid:,.2f} (Rent)
             + {total_rent_insurance:,.2f} (Insurance)
@@ -265,9 +264,9 @@ class ResultsVisualizer:
             st.markdown("___")
 
             color = "green" if rental_final_position > 0 else "red"
-            st.markdown(f'<p style="color: {color}; font-size: 20px;"><strong>{translate_text("Net Position", current_lang)}: ${rental_final_position:,.2f}</strong></p>', unsafe_allow_html=True)
+            st.markdown(f'<p style="color: {color}; font-size: 20px;"><strong>Net Position: ${rental_final_position:,.2f}</strong></p>', unsafe_allow_html=True)
             st.markdown(f"""
-            {translate_text("Final Position Calculation", current_lang)}:
+            Final Position Calculation:
             ```
             {rental_details[-1].investment_portfolio:,.2f} (Investments)
             - {total_rental_costs:,.2f} (Total Costs)
@@ -277,18 +276,18 @@ class ResultsVisualizer:
 
         # Compare the scenarios
         difference = purchase_final_position - rental_final_position
-        better_option = translate_text("Buying", current_lang) if difference > 0 else translate_text("Renting", current_lang)
+        better_option = "Buying" if difference > 0 else "Renting"
         color = "green" if difference > 0 else "red"
 
         st.markdown("---")
-        st.markdown(translate_text("### Comparison", current_lang))
-        st.markdown(f'<p style="font-size: 18px;">{translate_text("Better financial position by", current_lang)} <span style="color: green; font-weight: bold;">${abs(difference):,.2f}</span> {translate_text("with", current_lang)} <span style="color: green; font-weight: bold;">{better_option}</span></p>', unsafe_allow_html=True)
+        st.markdown("### Comparison")
+        st.markdown(f'<p style="font-size: 18px;">Better financial position by <span style="color: green; font-weight: bold;">${abs(difference):,.2f}</span> with <span style="color: green; font-weight: bold;">{better_option}</span></p>', unsafe_allow_html=True)
 
         # Add yearly breakdown section
         st.markdown("___")
-        st.markdown(translate_text("### Yearly Cost Breakdown", current_lang))
+        st.markdown("### Yearly Cost Breakdown")
         
-        with st.expander(translate_text("View Detailed Yearly Breakdown", current_lang)):
+        with st.expander("View Detailed Yearly Breakdown"):
             # Create tabs for Purchase and Rental scenarios
             purchase_tab, rental_tab = st.tabs(["Purchase Scenario", "Rental Scenario"])
             
@@ -379,8 +378,8 @@ class ResultsVisualizer:
     ):
 
         # Display the numerical breakdown
-        st.markdown(translate_text("### Monthly Payment Breakdown", current_lang))
-        st.markdown(translate_text(f"**Total Monthly Payment:** ${monthly_payment:,.2f}", current_lang))
-        st.markdown(translate_text(f"**First Payment Breakdown:**", current_lang))
-        st.markdown(translate_text(f"- Principal: ${first_principal:,.2f}", current_lang))
-        st.markdown(translate_text(f"- Interest: ${first_interest:,.2f}", current_lang))
+        st.markdown("### Monthly Payment Breakdown")
+        st.markdown(f"**Total Monthly Payment:** ${monthly_payment:,.2f}")
+        st.markdown(f"**First Payment Breakdown:**")
+        st.markdown(f"- Principal: ${first_principal:,.2f}")
+        st.markdown(f"- Interest: ${first_interest:,.2f}")

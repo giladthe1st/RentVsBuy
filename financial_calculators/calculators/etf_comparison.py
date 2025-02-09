@@ -5,7 +5,6 @@ import numpy as np
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
 from typing import Dict, Tuple, List
-from translation_utils import translate_text, translate_number_input
 from dateutil.relativedelta import relativedelta
 from functools import lru_cache
 
@@ -235,9 +234,7 @@ def calculate_yearly_etf_performance(initial_investment: float, annual_return: f
 
 def show(property_metrics: Dict = None):
     """Display ETF comparison calculator."""
-    current_lang = st.session_state.get('current_lang', 'en')
-    
-    st.subheader("📈 " + translate_text("Investment Comparison", current_lang))
+    st.subheader("Investment Comparison")
     
     # Create three columns for better layout
     col1, col2, col3 = st.columns([1, 1, 1])
@@ -245,21 +242,20 @@ def show(property_metrics: Dict = None):
     with col1:
         # Basic ETF inputs
         etf_symbol = st.text_input(
-            translate_text("ETF Symbol", current_lang),
+            "ETF Symbol",
             value="SPY",
             help="Enter ETF symbol (e.g., SPY, VTI, QQQ)"
         )
         
-        annual_salary = translate_number_input(
+        annual_salary = st.number_input(
             "Annual Household Income ($)",
-            current_lang,
             min_value=0.0,
             value=100000.0,
             step=1000.0
         )
         
         investment_amount = st.number_input(
-            translate_text("Initial Investment Amount ($)", current_lang),
+            "Initial Investment Amount ($)",
             min_value=0.0,
             value=property_metrics.get('down_payment', 50000.0) if property_metrics else 50000.0,
             step=1000.0
@@ -267,9 +263,8 @@ def show(property_metrics: Dict = None):
     
     with col2:
         # Additional investment inputs
-        annual_contribution = translate_number_input(
+        annual_contribution = st.number_input(
             "Annual Additional Investment ($)",
-            current_lang,
             min_value=0.0,
             value=0.0,
             step=1000.0
@@ -280,7 +275,7 @@ def show(property_metrics: Dict = None):
         default_start_date = default_end_date - timedelta(days=10*365)  # 10 years by default
         
         # Month/Year selection for end date
-        st.write(translate_text("End Date", current_lang))
+        st.write("End Date")
         end_col1, end_col2 = st.columns(2)
         with end_col1:
             end_month = st.selectbox(
@@ -298,7 +293,7 @@ def show(property_metrics: Dict = None):
             )
         
         # Month/Year selection for start date
-        st.write(translate_text("Start Date", current_lang))
+        st.write("Start Date")
         start_col1, start_col2 = st.columns(2)
         with start_col1:
             start_month = st.selectbox(
@@ -317,7 +312,7 @@ def show(property_metrics: Dict = None):
             )
             
         reinvest_dividends = st.checkbox(
-            translate_text("Reinvest Dividends", current_lang),
+            "Reinvest Dividends",
             value=True,
             help="If checked, dividends will be automatically reinvested to buy more shares"
         )
@@ -328,13 +323,13 @@ def show(property_metrics: Dict = None):
     net_income = annual_salary - total_tax
     
     # Display tax information in a new container
-    with st.expander("💰 " + translate_text("Tax Breakdown", current_lang)):
-        st.write(translate_text("Annual Income:", current_lang), f"${annual_salary:,.2f}")
-        st.write(translate_text("Total Tax:", current_lang), f"${total_tax:,.2f}")
-        st.write(translate_text("Net Income:", current_lang), f"${net_income:,.2f}")
+    with st.expander("Tax Breakdown"):
+        st.write("Annual Income:", f"${annual_salary:,.2f}")
+        st.write("Total Tax:", f"${total_tax:,.2f}")
+        st.write("Net Income:", f"${net_income:,.2f}")
         
         # Display tax brackets
-        st.write("### " + translate_text("Tax Brackets Breakdown", current_lang))
+        st.write("### Tax Brackets Breakdown")
         for bracket, amount in tax_brackets.items():
             st.write(f"{bracket}: ${amount:,.2f}")
     
@@ -353,7 +348,7 @@ def show(property_metrics: Dict = None):
                 metrics = calculate_etf_metrics(hist_data, investment_amount, annual_contribution, reinvest_dividends)
                 
                 with col3:
-                    st.markdown("### " + translate_text("ETF Metrics", current_lang))
+                    st.markdown("### ETF Metrics")
                     
                     # Show ETF info if available
                     if etf_info:
@@ -361,12 +356,12 @@ def show(property_metrics: Dict = None):
                         if 'longName' in etf_info:
                             st.markdown(f"*{etf_info['longName']}*")
                     
-                    st.metric(translate_text("Total Return", current_lang), f"{metrics['total_return']:.2f}%")
-                    st.metric(translate_text("Annual Return", current_lang), f"{metrics['annual_return']:.2f}%")
-                    st.metric(translate_text("Annual Dividend Income", current_lang), f"${metrics['annual_dividend_income']:,.2f}")
-                    st.metric(translate_text("Current Investment Value", current_lang), f"${metrics['current_value']:,.2f}")
-                    st.metric(translate_text("Volatility", current_lang), f"{metrics['volatility']:.2f}%")
-                    st.metric(translate_text("Total Dividends Earned", current_lang), f"${metrics['total_cash_dividends']:,.2f}")
+                    st.metric("Total Return", f"{metrics['total_return']:.2f}%")
+                    st.metric("Annual Return", f"{metrics['annual_return']:.2f}%")
+                    st.metric("Annual Dividend Income", f"${metrics['annual_dividend_income']:,.2f}")
+                    st.metric("Current Investment Value", f"${metrics['current_value']:,.2f}")
+                    st.metric("Volatility", f"{metrics['volatility']:.2f}%")
+                    st.metric("Total Dividends Earned", f"${metrics['total_cash_dividends']:,.2f}")
                 
                 # Calculate yearly performance using actual available years
                 yearly_performance = calculate_yearly_etf_performance(
@@ -380,13 +375,13 @@ def show(property_metrics: Dict = None):
                 )
                 
                 # Create detailed yearly chart
-                st.markdown("### " + translate_text("Yearly Performance", current_lang))
+                st.markdown("### Yearly Performance")
                 
                 fig = go.Figure()
                 
                 # Add investment value line
                 fig.add_trace(go.Scatter(
-                    name=translate_text('Investment Value', current_lang),
+                    name='Investment Value',
                     x=yearly_performance['Year'],
                     y=yearly_performance['Value'],
                     line=dict(color='green')
@@ -394,7 +389,7 @@ def show(property_metrics: Dict = None):
                 
                 # Add contribution line
                 fig.add_trace(go.Scatter(
-                    name=translate_text('Total Contribution', current_lang),
+                    name='Total Contribution',
                     x=yearly_performance['Year'],
                     y=yearly_performance['Cumulative Contribution'],
                     line=dict(color='blue', dash='dash')
@@ -402,7 +397,7 @@ def show(property_metrics: Dict = None):
                 
                 # Add dividend income line with secondary y-axis
                 fig.add_trace(go.Bar(
-                    name=translate_text('Annual Dividend Income', current_lang),
+                    name='Annual Dividend Income',
                     x=yearly_performance['Year'],
                     y=yearly_performance['Annual Dividend'],
                     marker=dict(
@@ -414,11 +409,11 @@ def show(property_metrics: Dict = None):
                 
                 # Update layout with secondary y-axis
                 fig.update_layout(
-                    title=translate_text('Investment Growth Over Time', current_lang),
-                    xaxis_title=translate_text('Years', current_lang),
-                    yaxis_title=translate_text('Value ($)', current_lang),
+                    title='Investment Growth Over Time',
+                    xaxis_title='Years',
+                    yaxis_title='Value ($)',
                     yaxis2=dict(
-                        title=translate_text('Dividend Income ($)', current_lang),
+                        title='Dividend Income ($)',
                         overlaying='y',
                         side='right',
                         showgrid=False,
@@ -432,13 +427,13 @@ def show(property_metrics: Dict = None):
                 st.plotly_chart(fig, key="yearly_performance")
                 
                 # Show daily value graph
-                st.markdown("### " + translate_text("Daily Investment Value", current_lang))
+                st.markdown("### Daily Investment Value")
                 
                 fig = go.Figure()
                 
                 # Add investment value line
                 fig.add_trace(go.Scatter(
-                    name=translate_text('Investment Value', current_lang),
+                    name='Investment Value',
                     x=metrics['daily_data'].index,
                     y=metrics['daily_data']['Value'],
                     line=dict(color='green')
@@ -446,16 +441,16 @@ def show(property_metrics: Dict = None):
                 
                 # Add cumulative dividends line
                 fig.add_trace(go.Scatter(
-                    name=translate_text('Cumulative Dividends', current_lang),
+                    name='Cumulative Dividends',
                     x=metrics['daily_data'].index,
                     y=metrics['daily_data']['Cumulative_Dividends'],
                     line=dict(color='blue', dash='dash')
                 ))
                 
                 fig.update_layout(
-                    title=translate_text('Daily Investment Value and Cumulative Dividends', current_lang),
-                    xaxis_title=translate_text('Date', current_lang),
-                    yaxis_title=translate_text('Value ($)', current_lang),
+                    title='Daily Investment Value and Cumulative Dividends',
+                    xaxis_title='Date',
+                    yaxis_title='Value ($)',
                     hovermode='x unified'
                 )
                 
@@ -463,14 +458,14 @@ def show(property_metrics: Dict = None):
                 
                 # Create comparison if property metrics are available
                 if property_metrics:
-                    st.markdown("### 📊 " + translate_text("Investment Comparison", current_lang))
+                    st.markdown("### Investment Comparison")
                     
                     comparison_data = {
                         'Metric': [
-                            translate_text("Annual Return (%)", current_lang),
-                            translate_text("Monthly Income ($)", current_lang),
-                            translate_text("Initial Investment ($)", current_lang),
-                            translate_text("Current Investment Value", current_lang)
+                            'Annual Return (%)',
+                            'Monthly Income ($)',
+                            'Initial Investment ($)',
+                            'Current Investment Value'
                         ],
                         'Real Estate': [
                             property_metrics.get('annual_return', 0),
@@ -515,9 +510,9 @@ def show(property_metrics: Dict = None):
                     ))
                     
                     fig.update_layout(
-                        title=translate_text('Investment Value Over Time', current_lang),
-                        xaxis_title=translate_text('Years', current_lang),
-                        yaxis_title=translate_text('Value ($)', current_lang),
+                        title='Investment Value Over Time',
+                        xaxis_title='Years',
+                        yaxis_title='Value ($)',
                         hovermode='x unified'
                     )
                     

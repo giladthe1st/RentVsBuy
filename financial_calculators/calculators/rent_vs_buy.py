@@ -4,7 +4,6 @@ from ui.input_handler import InputHandler
 from ui.results_visualizer import ResultsVisualizer
 from utils.financial_calculator import FinancialCalculator
 from utils.constants import DEFAULT_VALUES
-from translation_utils import create_language_selector, translate_text, translate_number_input
 
 def show():
     """Main function to display the rent vs buy calculator interface."""
@@ -12,34 +11,27 @@ def show():
     # Check if we're in deployment environment
     is_deployed = os.getenv('DEPLOYMENT_ENV') == 'production'
     
-    # Initialize language only if deployed
-    current_lang = 'en'  # Default to English
-    if is_deployed:
-        current_lang = create_language_selector()
-    
-    st.title(translate_text("Rent vs. Buy Calculator", current_lang))
-    st.write(translate_text("Compare the financial implications of renting versus buying a home", current_lang))
+    st.title("Rent vs. Buy Calculator")
+    st.write("Compare the financial implications of renting versus buying a home")
 
     # Get simulation years input
-    years = translate_number_input(
-        translate_text('Simulation Years:', current_lang),
-        current_lang,
+    years = st.number_input(
+        'Simulation Years:',
         min_value=1,
         max_value=50,
         value=DEFAULT_VALUES['years'],
-        help=translate_text("Number of years to simulate the comparison", current_lang)
+        help="Number of years to simulate the comparison"
     )
     st.session_state['simulation_years'] = years
 
     # Get annual income input
-    annual_income = translate_number_input(
-        translate_text("Annual Household Income ($)", current_lang),
-        current_lang,
+    annual_income = st.number_input(
+        "Annual Household Income ($)",
         min_value=0,
         max_value=1000000,
         value=100000,
         step=1000,
-        help=translate_text("Total yearly household income before taxes", current_lang)
+        help="Total yearly household income before taxes"
     )
 
     # Create two columns for the layout
@@ -47,7 +39,7 @@ def show():
 
     # Purchase inputs in left column
     with col1:
-        purchase_params = InputHandler.create_purchase_inputs(current_lang)
+        purchase_params = InputHandler.create_purchase_inputs()
 
         # Calculate and display initial mortgage details
         loan_amount = purchase_params.house_price * (1 - purchase_params.down_payment_pct/100)
@@ -67,18 +59,17 @@ def show():
         ResultsVisualizer.create_monthly_payment_chart(
             monthly_payment,
             first_principal,
-            first_interest,
-            current_lang
+            first_interest
         )
 
     # Rental inputs in middle column
     with col2:
         # Set initial investment based on purchase down payment
         st.session_state['initial_investment'] = purchase_params.house_price * (purchase_params.down_payment_pct/100)
-        rental_params = InputHandler.create_rental_inputs(current_lang)
+        rental_params = InputHandler.create_rental_inputs()
 
     # Calculate comparison when button is clicked
-    if st.button(translate_text("Calculate Comparison", current_lang), type="primary"):
+    if st.button("Calculate Comparison", type="primary"):
         # Initialize calculator
         calculator = FinancialCalculator()
         
@@ -95,8 +86,7 @@ def show():
         ResultsVisualizer.create_comparison_chart(
             purchase_details,
             rental_details,
-            years,
-            current_lang
+            years
         )
         
         ResultsVisualizer.display_summary_statistics(
@@ -104,7 +94,6 @@ def show():
             rental_details,
             years,
             rental_params.initial_investment,
-            current_lang,
             purchase_params
         )
 

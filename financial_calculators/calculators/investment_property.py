@@ -8,20 +8,6 @@ import numpy_financial as npf
 # Use relative imports
 from utils.financial_calculator import FinancialCalculator
 
-try:
-    from utils.translation_utils import create_language_selector, translate_text, translate_number_input
-except ImportError:
-    # Mock translation functions for testing
-    def translate_text(text, _=None):
-        return text
-
-    def translate_number_input(label, lang=None, **kwargs):
-        """Mock translation function that handles streamlit parameters"""
-        return st.number_input(label, **kwargs)
-
-    def create_language_selector():
-        return None
-
 @dataclass
 class LoanPeriod:
     """Data class for loan period details."""
@@ -315,174 +301,157 @@ def show():
     # Check if we're in deployment environment
     is_deployed = False  # Set to False for testing
     
-    # Initialize language only if deployed
-    current_lang = 'en'  # Default to English
-    if is_deployed:
-        current_lang = create_language_selector()
-    
-    st.title(translate_text("Investment Property Calculator", current_lang))
-    st.write(translate_text("Evaluate potential real estate investments and analyze their financial performance", current_lang))
+    st.title("Investment Property Calculator")
+    st.write("Evaluate potential real estate investments and analyze their financial performance")
 
     # Create columns for better layout
     col1, col2 = st.columns(2)
 
     with col1:
-        st.subheader(translate_text("Property Details", current_lang))
+        st.subheader("Property Details")
         
         # Property type selection
         property_type = st.selectbox(
-            translate_text("Property Type", current_lang),
+            "Property Type",
             ["Single Family", "Multi-Family", "Condo"],
-            help=translate_text("Select the type of property you're analyzing", current_lang)
+            help="Select the type of property you're analyzing"
         )
         
         # Purchase details
-        purchase_price = float(translate_number_input(
-            translate_text("Purchase Price ($)", current_lang),
-            current_lang,
+        purchase_price = float(st.number_input(
+            "Purchase Price ($)",
             min_value=0,
             value=300000,
             step=1000,
-            help=translate_text("Enter the total purchase price of the property", current_lang)
+            help="Enter the total purchase price of the property"
         ))
         
         # Calculate and display closing costs
         closing_costs = FinancialCalculator.calculate_closing_costs(purchase_price)
-        with st.expander(translate_text("View Closing Costs Breakdown", current_lang)):
+        with st.expander("View Closing Costs Breakdown"):
             st.markdown(f"""
-            #### {translate_text('One-Time Closing Costs', current_lang)}
-            - {translate_text('Legal Fees', current_lang)}: ${closing_costs['legal_fees']:,.2f}
-            - {translate_text('Bank Appraisal Fee', current_lang)}: ${closing_costs['bank_appraisal_fee']:,.2f}
-            - {translate_text('Interest Adjustment', current_lang)}: ${closing_costs['interest_adjustment']:,.2f}
-            - {translate_text('Title Insurance', current_lang)}: ${closing_costs['title_insurance']:,.2f}
-            - {translate_text('Land Transfer Tax', current_lang)}: ${closing_costs['land_transfer_tax']:,.2f}
+            #### One-Time Closing Costs
+            - Legal Fees: ${closing_costs['legal_fees']:,.2f}
+            - Bank Appraisal Fee: ${closing_costs['bank_appraisal_fee']:,.2f}
+            - Interest Adjustment: ${closing_costs['interest_adjustment']:,.2f}
+            - Title Insurance: ${closing_costs['title_insurance']:,.2f}
+            - Land Transfer Tax: ${closing_costs['land_transfer_tax']:,.2f}
             
-            **{translate_text('Total Closing Costs', current_lang)}: ${closing_costs['total']:,.2f}**
+            **Total Closing Costs: ${closing_costs['total']:,.2f}**
             
             [Learn more about closing costs](https://www.example.com/closing-costs-info)
             """)
         
-        down_payment_pct = float(translate_number_input(
-            translate_text("Down Payment (%)", current_lang),
-            current_lang,
+        down_payment_pct = float(st.number_input(
+            "Down Payment (%)",
             min_value=0.0,
             max_value=100.0,
             value=20.0,
             step=1.0,
-            help=translate_text("Percentage of purchase price as down payment", current_lang)
+            help="Percentage of purchase price as down payment"
         ))
         down_payment_amount = purchase_price * (down_payment_pct / 100)
         st.markdown(f"Down Payment Amount: **${down_payment_amount:,.2f}**")
         
         interest_rates = []
-        num_rate_periods = int(translate_number_input(
-            translate_text("Number of Interest Rate Periods", current_lang),
-            current_lang,
+        num_rate_periods = int(st.number_input(
+            "Number of Interest Rate Periods",
             min_value=1,
             max_value=10,
             value=1,
-            help=translate_text("Number of interest rate periods for the mortgage", current_lang)
+            help="Number of interest rate periods for the mortgage"
         ))
         
         for i in range(num_rate_periods):
             rate_col1, rate_col2 = st.columns([2, 1])
             with rate_col1:
-                rate = float(translate_number_input(
-                    translate_text(f"Interest Rate {i+1} (%)", current_lang),
-                    current_lang,
+                rate = float(st.number_input(
+                    f"Interest Rate {i+1} (%)",
                     min_value=0.0,
                     max_value=20.0,
                     value=4.0,
                     step=0.1,
-                    help=translate_text(f"Annual interest rate for period {i+1}", current_lang)
+                    help=f"Annual interest rate for period {i+1}"
                 ))
             with rate_col2:
-                years = int(translate_number_input(
-                    translate_text(f"Years for Rate {i+1}", current_lang),
-                    current_lang,
+                years = int(st.number_input(
+                    f"Years for Rate {i+1}",
                     min_value=1,
                     max_value=40,
                     value=30,
-                    help=translate_text(f"Number of years for interest rate {i+1}", current_lang)
+                    help=f"Number of years for interest rate {i+1}"
                 ))
             interest_rates.append({'rate': rate, 'years': years})
         
-        holding_period = int(translate_number_input(
-            translate_text("Expected Holding Period (Years)", current_lang),
-            current_lang,
+        holding_period = int(st.number_input(
+            "Expected Holding Period (Years)",
             min_value=1,
             max_value=50,
             value=30,
-            help=translate_text("How long do you plan to hold this investment?", current_lang)
+            help="How long do you plan to hold this investment?"
         ))
 
     with col2:
-        st.subheader(translate_text("Income Analysis", current_lang))
+        st.subheader("Income Analysis")
         
         # Create columns for salary and its increase rate
         salary_col1, salary_col2 = st.columns([2, 1])
         
         with salary_col1:
             # Annual salary input
-            annual_salary = float(translate_number_input(
-                translate_text("Annual Salary ($)", current_lang),
-                current_lang,
+            annual_salary = float(st.number_input(
+                "Annual Salary ($)",
                 min_value=0,
                 value=80000,
                 step=1000,
-                help=translate_text("Enter your annual salary for tax calculation", current_lang)
+                help="Enter your annual salary for tax calculation"
             ))
         
         with salary_col2:
-            salary_inflation = float(translate_number_input(
-                translate_text("Annual Increase (%)", current_lang),
-                current_lang,
+            salary_inflation = float(st.number_input(
+                "Annual Increase (%)",
                 min_value=0.0,
                 max_value=20.0,
                 value=3.0,
                 step=0.1,
-                help=translate_text("Expected annual percentage increase in salary", current_lang)
+                help="Expected annual percentage increase in salary"
             ))
         
         # Create columns for rent and its increase rate
         rent_col1, rent_col2 = st.columns([2, 1])
         
         with rent_col1:
-            monthly_rent = float(translate_number_input(
-                translate_text("Expected Monthly Rent ($)", current_lang),
-                current_lang,
+            monthly_rent = float(st.number_input(
+                "Expected Monthly Rent ($)",
                 min_value=0,
                 value=2000,
                 step=100,
-                help=translate_text("Enter the expected monthly rental income", current_lang)
+                help="Enter the expected monthly rental income"
             ))
         
         with rent_col2:
-            annual_rent_increase = float(translate_number_input(
-                translate_text("Annual Increase (%)", current_lang),
-                current_lang,
+            annual_rent_increase = float(st.number_input(
+                "Annual Increase (%)",
                 min_value=0,
                 max_value=10,
                 value=3,
-                help=translate_text("Expected annual percentage increase in rental income", current_lang)
+                help="Expected annual percentage increase in rental income"
             ))
         
-        other_income = float(translate_number_input(
-            translate_text("Other Monthly Income ($)", current_lang),
-            current_lang,
+        other_income = float(st.number_input(
+            "Other Monthly Income ($)",
             min_value=0,
             value=0,
             step=50,
-            help=translate_text("Additional income from parking, laundry, storage, etc.", current_lang)
+            help="Additional income from parking, laundry, storage, etc."
         ))
         
-        vacancy_rate = float(translate_number_input(
-            translate_text("Vacancy Rate (%)", current_lang),
-            current_lang,
+        vacancy_rate = float(st.number_input(
+            "Vacancy Rate (%)",
             min_value=0,
             max_value=20,
             value=5,
-            help=translate_text("Expected percentage of time the property will be vacant", current_lang)
+            help="Expected percentage of time the property will be vacant"
         ))
 
     # Calculate initial mortgage details
@@ -494,150 +463,139 @@ def show():
     loan_amount = purchase_price * (1 - down_payment_pct / 100)
 
     # Display initial mortgage details
-    st.subheader(translate_text("Initial Mortgage Details", current_lang))
+    st.subheader("Initial Mortgage Details")
     mort_col1, mort_col2, mort_col3, mort_col4, mort_col5 = st.columns(5)
     
     with mort_col1:
         st.metric(
-            translate_text("Loan Amount", current_lang),
+            "Loan Amount",
             f"${loan_amount:,.2f}",
-            help=translate_text("Total amount borrowed for the mortgage", current_lang)
+            help="Total amount borrowed for the mortgage"
         )
     with mort_col2:
         st.metric(
-            translate_text("Monthly Payment", current_lang),
+            "Monthly Payment",
             f"${monthly_payments[0]:,.2f}",
-            help=translate_text("Monthly mortgage payment", current_lang)
+            help="Monthly mortgage payment"
         )
     with mort_col3:
         st.metric(
-            translate_text("Annual Payment", current_lang),
+            "Annual Payment",
             f"${monthly_payments[0] * 12:,.2f}",
-            help=translate_text("Total yearly mortgage payment", current_lang)
+            help="Total yearly mortgage payment"
         )
     with mort_col4:
         st.metric(
-            translate_text("Down Payment", current_lang),
+            "Down Payment",
             f"${down_payment_amount:,.2f}",
-            help=translate_text("Initial down payment amount", current_lang)
+            help="Initial down payment amount"
         )
     with mort_col5:
         st.metric(
-            translate_text("Closing Costs", current_lang),
+            "Closing Costs",
             f"${closing_costs['total']:,.2f}",
-            help=translate_text("One-time closing costs for property purchase", current_lang)
+            help="One-time closing costs for property purchase"
         )
 
     # Operating Expenses Section
-    st.subheader(translate_text("Operating Expenses", current_lang))
+    st.subheader("Operating Expenses")
     exp_col1, exp_col2, exp_col3 = st.columns(3)
 
     with exp_col1:
-        property_tax = float(translate_number_input(
-            translate_text("Annual Property Tax ($)", current_lang),
-            current_lang,
+        property_tax = float(st.number_input(
+            "Annual Property Tax ($)",
             min_value=0,
             value=3000,
             step=100,
-            help=translate_text("Annual property tax amount", current_lang)
+            help="Annual property tax amount"
         ))
         
-        insurance = float(translate_number_input(
-            translate_text("Annual Insurance ($)", current_lang),
-            current_lang,
+        insurance = float(st.number_input(
+            "Annual Insurance ($)",
             min_value=0,
             value=1200,
             step=100,
-            help=translate_text("Annual property insurance cost", current_lang)
+            help="Annual property insurance cost"
         ))
         
-        utilities = float(translate_number_input(
-            translate_text("Monthly Utilities ($)", current_lang),
-            current_lang,
+        utilities = float(st.number_input(
+            "Monthly Utilities ($)",
             min_value=0,
             value=0,
             step=50,
-            help=translate_text("Monthly utilities cost (if paid by owner)", current_lang)
+            help="Monthly utilities cost (if paid by owner)"
         ))
         
-        mgmt_fee = float(translate_number_input(
-            translate_text("Monthly Property Management Fee ($)", current_lang),
-            current_lang,
+        mgmt_fee = float(st.number_input(
+            "Monthly Property Management Fee ($)",
             min_value=0,
             value=200,
             step=50,
-            help=translate_text("Monthly property management fee", current_lang)
+            help="Monthly property management fee"
         ))
 
     with exp_col2:
-        maintenance_pct = float(translate_number_input(
-            translate_text("Maintenance & Repairs (% of property value)", current_lang),
-            current_lang,
+        maintenance_pct = float(st.number_input(
+            "Maintenance & Repairs (% of property value)",
             min_value=0.0,
             max_value=5.0,
             value=1.0,
             step=0.1,
-            help=translate_text("Expected annual maintenance costs as percentage of property value", current_lang)
+            help="Expected annual maintenance costs as percentage of property value"
         ))
         
-        hoa_fees = float(translate_number_input(
-            translate_text("Monthly HOA Fees ($)", current_lang),
-            current_lang,
+        hoa_fees = float(st.number_input(
+            "Monthly HOA Fees ($)",
             min_value=0,
             value=0,
             step=50,
-            help=translate_text("Monthly HOA or condo fees if applicable", current_lang)
+            help="Monthly HOA or condo fees if applicable"
         ))
 
     with exp_col3:
-        property_tax_inflation = float(translate_number_input(
-            translate_text("Property Tax Annual Increase (%)", current_lang),
-            current_lang,
+        property_tax_inflation = float(st.number_input(
+            "Property Tax Annual Increase (%)",
             min_value=0.0,
             max_value=10.0,
             value=2.0,
             step=0.1,
-            help=translate_text("Expected annual increase in property tax", current_lang)
+            help="Expected annual increase in property tax"
         ))
         
-        insurance_inflation = float(translate_number_input(
-            translate_text("Insurance Annual Increase (%)", current_lang),
-            current_lang,
+        insurance_inflation = float(st.number_input(
+            "Insurance Annual Increase (%)",
             min_value=0.0,
             max_value=10.0,
             value=3.0,
             step=0.1,
-            help=translate_text("Expected annual increase in insurance cost", current_lang)
+            help="Expected annual increase in insurance cost"
         ))
         
-        utilities_inflation = float(translate_number_input(
-            translate_text("Utilities Annual Increase (%)", current_lang),
-            current_lang,
+        utilities_inflation = float(st.number_input(
+            "Utilities Annual Increase (%)",
             min_value=0.0,
             max_value=10.0,
             value=2.5,
             step=0.1,
-            help=translate_text("Expected annual increase in utilities cost", current_lang)
+            help="Expected annual increase in utilities cost"
         ))
         
-        mgmt_fee_inflation = float(translate_number_input(
-            translate_text("Management Fee Annual Increase (%)", current_lang),
-            current_lang,
+        mgmt_fee_inflation = float(st.number_input(
+            "Management Fee Annual Increase (%)",
             min_value=0.0,
             max_value=10.0,
             value=2.0,
             step=0.1,
-            help=translate_text("Expected annual increase in property management fee", current_lang)
+            help="Expected annual increase in property management fee"
         ))
         
-        hoa_inflation = float(translate_number_input(
-            translate_text("HOA Fees Annual Increase (%)", current_lang),
-            current_lang,
+        hoa_inflation = float(st.number_input(
+            "HOA Fees Annual Increase (%)",
             min_value=0.0,
             max_value=10.0,
             value=3.0,
             step=0.1,
-            help=translate_text("Expected annual increase in HOA fees", current_lang)
+            help="Expected annual increase in HOA fees"
         ))
 
     # Calculate monthly operating expenses
@@ -653,13 +611,13 @@ def show():
 
     # Display total operating expenses
     st.metric(
-        translate_text("Total Monthly Operating Expenses", current_lang),
+        "Total Monthly Operating Expenses",
         f"${monthly_operating_expenses:,.2f}",
-        help=translate_text("Sum of all monthly operating expenses", current_lang)
+        help="Sum of all monthly operating expenses"
     )
 
     # Financial Analysis Section
-    st.subheader(translate_text("Financial Analysis", current_lang))
+    st.subheader("Financial Analysis")
 
     # Calculate key metrics
     monthly_gross_income = monthly_rent + other_income
@@ -681,76 +639,73 @@ def show():
     
     with metrics_col1:
         st.metric(
-            translate_text("Monthly Cash Flow", current_lang),
+            "Monthly Cash Flow",
             f"${monthly_cash_flow:,.2f}",
-            help=translate_text("Net monthly income after all expenses and mortgage payment", current_lang)
+            help="Net monthly income after all expenses and mortgage payment"
         )
         st.metric(
-            translate_text("Annual Cash Flow", current_lang),
+            "Annual Cash Flow",
             f"${monthly_cash_flow * 12:,.2f}",
-            help=translate_text("Total yearly cash flow (monthly cash flow × 12)", current_lang)
+            help="Total yearly cash flow (monthly cash flow × 12)"
         )
     
     with metrics_col2:
         st.metric(
-            translate_text("Net Operating Income (NOI)", current_lang),
+            "Net Operating Income (NOI)",
             f"${annual_noi:,.2f}",
-            help=translate_text("Annual income after operating expenses but before mortgage payments", current_lang)
+            help="Annual income after operating expenses but before mortgage payments"
         )
         st.metric(
-            translate_text("Cap Rate", current_lang),
+            "Cap Rate",
             f"{cap_rate:.2f}%",
-            help=translate_text("Net Operating Income divided by property value", current_lang)
+            help="Net Operating Income divided by property value"
         )
     
     with metrics_col3:
         st.metric(
-            translate_text("Cash on Cash Return", current_lang),
+            "Cash on Cash Return",
             f"{cash_on_cash:.2f}%",
-            help=translate_text("Annual cash flow divided by down payment", current_lang)
+            help="Annual cash flow divided by down payment"
         )
         st.metric(
-            translate_text("Down Payment", current_lang),
+            "Down Payment",
             f"${down_payment_amount:,.2f}",
-            help=translate_text("Initial cash investment required", current_lang)
+            help="Initial cash investment required"
         )
 
     # Appreciation Scenarios
-    st.subheader(translate_text("Property Value Appreciation Scenarios", current_lang))
+    st.subheader("Property Value Appreciation Scenarios")
     
     appreciation_col1, appreciation_col2, appreciation_col3 = st.columns(3)
     
     with appreciation_col1:
-        conservative_rate = float(translate_number_input(
-            translate_text("Conservative Growth Rate (%)", current_lang),
-            current_lang,
+        conservative_rate = float(st.number_input(
+            "Conservative Growth Rate (%)",
             min_value=0.0,
             max_value=10.0,
             value=2.0,
             step=0.1,
-            help=translate_text("Annual property value appreciation rate - conservative estimate", current_lang)
+            help="Annual property value appreciation rate - conservative estimate"
         ))
     
     with appreciation_col2:
-        moderate_rate = float(translate_number_input(
-            translate_text("Moderate Growth Rate (%)", current_lang),
-            current_lang,
+        moderate_rate = float(st.number_input(
+            "Moderate Growth Rate (%)",
             min_value=0.0,
             max_value=10.0,
             value=3.5,
             step=0.1,
-            help=translate_text("Annual property value appreciation rate - moderate estimate", current_lang)
+            help="Annual property value appreciation rate - moderate estimate"
         ))
     
     with appreciation_col3:
-        optimistic_rate = float(translate_number_input(
-            translate_text("Optimistic Growth Rate (%)", current_lang),
-            current_lang,
+        optimistic_rate = float(st.number_input(
+            "Optimistic Growth Rate (%)",
             min_value=0.0,
             max_value=10.0,
             value=5.0,
             step=0.1,
-            help=translate_text("Annual property value appreciation rate - optimistic estimate", current_lang)
+            help="Annual property value appreciation rate - optimistic estimate"
         ))
 
     # Calculate future values and IRR for each scenario
@@ -852,27 +807,27 @@ def show():
     
     with irr_col1:
         st.metric(
-            translate_text("Conservative IRR", current_lang),
+            "Conservative IRR",
             f"{conservative_roi:.1f}%",
-            help=translate_text("Internal Rate of Return assuming conservative appreciation", current_lang)
+            help="Internal Rate of Return assuming conservative appreciation"
         )
     
     with irr_col2:
         st.metric(
-            translate_text("Moderate IRR", current_lang),
+            "Moderate IRR",
             f"{moderate_roi:.1f}%",
-            help=translate_text("Internal Rate of Return assuming moderate appreciation", current_lang)
+            help="Internal Rate of Return assuming moderate appreciation"
         )
     
     with irr_col3:
         st.metric(
-            translate_text("Optimistic IRR", current_lang),
+            "Optimistic IRR",
             f"{optimistic_roi:.1f}%",
-            help=translate_text("Internal Rate of Return assuming optimistic appreciation", current_lang)
+            help="Internal Rate of Return assuming optimistic appreciation"
         )
 
     # Create visualization
-    st.subheader(translate_text("Property Value and Cash Flow Projections", current_lang))
+    st.subheader("Property Value and Cash Flow Projections")
     
     # Property Value Chart
     import plotly.graph_objects as go
@@ -882,21 +837,21 @@ def show():
     fig.add_trace(go.Scatter(
         x=years,
         y=conservative_equity,
-        name=translate_text('Conservative Equity', current_lang),
+        name='Conservative Equity',
         line=dict(color="blue", dash="dot")
     ))
     
     fig.add_trace(go.Scatter(
         x=years,
         y=moderate_equity,
-        name=translate_text('Moderate Equity', current_lang),
+        name='Moderate Equity',
         line=dict(color="green")
     ))
     
     fig.add_trace(go.Scatter(
         x=years,
         y=optimistic_equity,
-        name=translate_text('Optimistic Equity', current_lang),
+        name='Optimistic Equity',
         line=dict(color="red", dash="dash")
     ))
     
@@ -904,18 +859,18 @@ def show():
     fig.add_trace(go.Bar(
         x=list(range(1, holding_period + 1)),
         y=annual_cash_flows,
-        name=translate_text('Annual Cash Flow', current_lang),
+        name='Annual Cash Flow',
         yaxis="y2",
         marker_color="rgba(0,150,0,0.5)"
     ))
     
     # Update layout with secondary y-axis
     fig.update_layout(
-        title=translate_text('Property Value and Cash Flow Over Time', current_lang),
-        xaxis_title=translate_text('Years', current_lang),
-        yaxis_title=translate_text('Equity Value ($)', current_lang),
+        title='Property Value and Cash Flow Over Time',
+        xaxis_title='Years',
+        yaxis_title='Equity Value ($)',
         yaxis2=dict(
-            title=translate_text('Annual Cash Flow ($)', current_lang),
+            title='Annual Cash Flow ($)',
             overlaying="y",
             side="right",
             tickformat="$,.0f"
@@ -953,7 +908,7 @@ def show():
     df_loan = pd.DataFrame(loan_schedule)
 
     # Income Tax Analysis
-    st.subheader(translate_text("Income Tax Analysis", current_lang))
+    st.subheader("Income Tax Analysis")
     
     # Calculate employment income tax
     employment_tax_deductions = calculate_tax_brackets(annual_salary)
@@ -974,31 +929,31 @@ def show():
     
     with emp_col1:
         st.metric(
-            translate_text("Income", current_lang),
+            "Income",
             f"${annual_salary:,.2f}",
-            help=translate_text("Your annual salary before tax", current_lang)
+            help="Your annual salary before tax"
         )
     with emp_col2:
         st.metric(
-            translate_text("Tax Paid", current_lang),
+            "Tax Paid",
             f"${employment_total_tax:,.2f}",
-            help=translate_text("Total income tax on employment income", current_lang)
+            help="Total income tax on employment income"
         )
     with emp_col3:
         st.metric(
-            translate_text("After-Tax Income", current_lang),
+            "After-Tax Income",
             f"${employment_after_tax:,.2f}",
-            help=translate_text("Your employment income after tax", current_lang)
+            help="Your employment income after tax"
         )
     with emp_col4:
         st.metric(
-            translate_text("Effective Tax Rate", current_lang),
+            "Effective Tax Rate",
             f"{employment_tax_rate:.2f}%",
-            help=translate_text("Your effective tax rate on employment income", current_lang)
+            help="Your effective tax rate on employment income"
         )
         
     # Display employment income tax brackets
-    with st.expander(translate_text("View Employment Income Tax Breakdown", current_lang)):
+    with st.expander("View Employment Income Tax Breakdown"):
         for bracket, amount in employment_tax_deductions.items():
             if amount > 0:
                 st.write(f"{bracket}: **${amount:,.2f}**")
@@ -1009,48 +964,48 @@ def show():
     
     with combined_col1:
         st.metric(
-            translate_text("Total Income", current_lang),
+            "Total Income",
             f"${total_taxable_income:,.2f}",
-            help=translate_text("Combined income from employment and rental property", current_lang)
+            help="Combined income from employment and rental property"
         )
         st.caption(f"Employment: ${annual_salary:,.2f}")
         st.caption(f"Rental: ${(monthly_rent * 12 * (1 - vacancy_rate/100) + other_income * 12 - (monthly_payments[0] * 12 + monthly_operating_expenses * 12)):,.2f}")
     with combined_col2:
         st.metric(
-            translate_text("Tax Paid", current_lang),
+            "Tax Paid",
             f"${combined_total_tax:,.2f}",
-            help=translate_text("Total income tax on combined income", current_lang)
+            help="Total income tax on combined income"
         )
         tax_difference = combined_total_tax - employment_total_tax
         st.caption(f"Additional Tax: ${tax_difference:,.2f}")
     with combined_col3:
         st.metric(
-            translate_text("After-Tax Income", current_lang),
+            "After-Tax Income",
             f"${combined_after_tax:,.2f}",
-            help=translate_text("Your total income after tax", current_lang)
+            help="Your total income after tax"
         )
         income_difference = combined_after_tax - employment_after_tax
         st.caption(f"Additional Income: ${income_difference:,.2f}")
     with combined_col4:
         st.metric(
-            translate_text("Effective Tax Rate", current_lang),
+            "Effective Tax Rate",
             f"{combined_tax_rate:.2f}%",
-            help=translate_text("Your effective tax rate on total income", current_lang)
+            help="Your effective tax rate on total income"
         )
         rate_difference = combined_tax_rate - employment_tax_rate
         st.caption(f"Rate Change: {rate_difference:+.2f}%")
     
     # Display combined income tax brackets
-    with st.expander(translate_text("View Combined Income Tax Breakdown", current_lang)):
+    with st.expander("View Combined Income Tax Breakdown"):
         for bracket, amount in combined_tax_deductions.items():
             if amount > 0:
                 st.write(f"{bracket}: **${amount:,.2f}**")
 
     # Yearly Income Tax Analysis
     st.markdown("___")
-    st.subheader(translate_text("Yearly Income Tax Analysis", current_lang))
+    st.subheader("Yearly Income Tax Analysis")
     
-    with st.expander(translate_text("View Detailed Yearly Tax Breakdown", current_lang)):
+    with st.expander("View Detailed Yearly Tax Breakdown"):
         yearly_tax_data = []
         
         # Calculate yearly values
@@ -1168,7 +1123,7 @@ def show():
         st.plotly_chart(fig, use_container_width=True)
 
     # Cash Flow Analysis
-    st.subheader(translate_text("Cash Flow Analysis", current_lang))
+    st.subheader("Cash Flow Analysis")
     
     # Calculate yearly equity from loan paydown
     yearly_equity = []
@@ -1187,30 +1142,30 @@ def show():
     
     with summary_col1:
         st.metric(
-            translate_text("Total Equity Buildup", current_lang),
+            "Total Equity Buildup",
             f"${total_equity_buildup:,.2f}",
-            help=translate_text("Total equity built through loan paydown during holding period", current_lang)
+            help="Total equity built through loan paydown during holding period"
         )
     
     with summary_col2:
         st.metric(
-            translate_text("Total Cash Flow", current_lang),
+            "Total Cash Flow",
             f"${total_cash_flow:,.2f}",
-            help=translate_text("Total cash flow during holding period", current_lang)
+            help="Total cash flow during holding period"
         )
     
     with summary_col3:
         st.metric(
-            translate_text("Average Annual Cash Flow", current_lang),
+            "Average Annual Cash Flow",
             f"${average_annual_cash_flow:,.2f}",
-            help=translate_text("Average yearly cash flow during holding period", current_lang)
+            help="Average yearly cash flow during holding period"
         )
 
     # Yearly Breakdown Section
     st.markdown("___")
-    st.subheader(translate_text("Yearly Cost and Revenue Breakdown", current_lang))
+    st.subheader("Yearly Cost and Revenue Breakdown")
     
-    with st.expander(translate_text("View Detailed Yearly Breakdown", current_lang)):
+    with st.expander("View Detailed Yearly Breakdown"):
         yearly_data = []
         for year in range(holding_period):
             # Calculate values for this year
