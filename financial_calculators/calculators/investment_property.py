@@ -6,7 +6,7 @@ from functools import lru_cache
 import numpy_financial as npf
 
 # Use relative imports
-from utils.financial_calculator import FinancialCalculator
+from ..utils.financial_calculator import FinancialCalculator
 
 @dataclass
 class LoanPeriod:

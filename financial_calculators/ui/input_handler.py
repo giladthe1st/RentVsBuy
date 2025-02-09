@@ -2,9 +2,9 @@
 
 import streamlit as st
 from typing import Tuple
-from models.data_models import PurchaseScenarioParams, RentalScenarioParams, Utilities, UtilityData
-from utils.constants import DEFAULT_VALUES, CLOSING_COSTS, CLOSING_COSTS_INFO_URL
-from utils.financial_calculator import FinancialCalculator
+from ..models.data_models import PurchaseScenarioParams, RentalScenarioParams, Utilities, UtilityData
+from ..utils.constants import DEFAULT_VALUES, CLOSING_COSTS, CLOSING_COSTS_INFO_URL
+from ..utils.financial_calculator import FinancialCalculator
 
 class InputHandler:
     @staticmethod

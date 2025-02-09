@@ -1,3 +1,0 @@
-[server]
-# The directory that contains the script to run
-scriptPath = "financial_calculators/main.py"

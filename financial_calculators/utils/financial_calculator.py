@@ -1,7 +1,7 @@
-from typing import Tuple, List, Dict
-from models.data_models import PurchaseScenarioParams, RentalScenarioParams, Utilities
-from models.rent_vs_buy_models import YearlyPurchaseDetails, YearlyRentalDetails
-from .constants import CLOSING_COSTS
+from typing import List, Tuple, Dict, Any
+from financial_calculators.models.data_models import PurchaseScenarioParams, RentalScenarioParams, Utilities
+from financial_calculators.models.rent_vs_buy_models import YearlyPurchaseDetails, YearlyRentalDetails
+from financial_calculators.utils.constants import CLOSING_COSTS
 
 class FinancialCalculator:
     @staticmethod
