@@ -2,10 +2,10 @@ from dataclasses import dataclass
 from typing import Tuple, Dict, Any
 
 import streamlit as st
-from ui.input_handler import InputHandler
-from ui.results_visualizer import ResultsVisualizer
-from utils.financial_calculator import FinancialCalculator
-from utils.constants import DEFAULT_VALUES
+from financial_calculators.ui.input_handler import InputHandler
+from financial_calculators.ui.results_visualizer import ResultsVisualizer
+from financial_calculators.utils.financial_calculator import FinancialCalculator
+from financial_calculators.utils.constants import DEFAULT_VALUES
 
 
 @dataclass
