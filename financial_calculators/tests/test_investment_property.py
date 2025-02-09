@@ -7,20 +7,6 @@ import os
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, project_root)
 
-# Mock translation functions
-def mock_translate_text(text, _):
-    return text
-
-def mock_translate_number_input(number, _):
-    return str(number)
-
-# Patch the translation module
-import sys
-from unittest.mock import MagicMock
-sys.modules['translation_utils'] = MagicMock()
-sys.modules['translation_utils'].translate_text = mock_translate_text
-sys.modules['translation_utils'].translate_number_input = mock_translate_number_input
-
 from financial_calculators.calculators.investment_property import (
     calculate_loan_details,
     calculate_monthly_payment,
