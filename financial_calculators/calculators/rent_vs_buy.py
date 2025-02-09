@@ -94,7 +94,14 @@ def show():
             rental_details,
             years,
             rental_params.initial_investment,
-            purchase_params
+            params={
+                'down_payment_pct': purchase_params.down_payment_pct,
+                'utilities': {
+                    'electricity': {'base': purchase_params.utilities.electricity.base},
+                    'water': {'base': purchase_params.utilities.water.base},
+                    'other': {'base': purchase_params.utilities.other.base}
+                }
+            }
         )
 
         # Save results to CSV
