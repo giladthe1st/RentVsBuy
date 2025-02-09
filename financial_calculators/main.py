@@ -1,8 +1,8 @@
 import streamlit as st
-from calculators.rent_vs_buy import show as show_rent_vs_buy
-from calculators.investment_property import show as show_investment_property
-from calculators.etf_comparison import show as show_etf_comparison
-from ui.navigation import NavigationManager, CalculatorType
+from financial_calculators.calculators.rent_vs_buy import show as show_rent_vs_buy
+from financial_calculators.calculators.investment_property import show as show_investment_property
+from financial_calculators.calculators.etf_comparison import show as show_etf_comparison
+from financial_calculators.ui.navigation import NavigationManager, CalculatorType
 
 def main():
     """Main entry point for the application."""

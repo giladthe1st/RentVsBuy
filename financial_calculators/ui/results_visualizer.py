@@ -3,7 +3,7 @@ import plotly.graph_objects as go
 import pandas as pd
 from typing import List, Dict
 import os
-from models.rent_vs_buy_models import YearlyPurchaseDetails, YearlyRentalDetails
+from financial_calculators.models.rent_vs_buy_models import YearlyPurchaseDetails, YearlyRentalDetails
 
 class ResultsVisualizer:
     @staticmethod
