@@ -1,0 +1,20 @@
+name: Reset Main Branch
+
+on:
+  workflow_dispatch:
+
+jobs:
+  reset:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          
+      - name: Reset main to specific commit
+        run: |
+          git config --global user.name 'GitHub Actions'
+          git config --global user.email 'actions@github.com'
+          git checkout main
+          git reset --hard 99020decfacb68b36b8ac88133ee08994dd04bdb
+          git push --force origin main
