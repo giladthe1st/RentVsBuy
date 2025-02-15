@@ -133,3 +133,12 @@ class InvestmentAnalysis:
             (1 + self.appreciation_scenario.optimistic_rate/100) ** year
             for year in range(self.property_details.loan_years + 1)
         ]
+
+
+@dataclass
+class LoanPeriod:
+    """Data class for loan period details."""
+    rate: float
+    years: int
+    months: int
+    payment: float
