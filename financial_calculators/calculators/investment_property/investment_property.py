@@ -109,13 +109,26 @@ def show():
                 ))
             interest_rates.append({'rate': rate, 'years': years})
         
-        holding_period = int(st.number_input(
-            "Expected Holding Period (Years)",
-            min_value=1,
-            max_value=50,
-            value=30,
-            help="How long do you plan to hold this investment?"
-        ))
+        # Option to use calculated or custom holding period
+        use_calculated_period = st.checkbox(
+            "Use calculated holding period based on interest rate periods",
+            value=True
+        )
+
+        if use_calculated_period:
+            # Calculate total holding period from interest rate periods
+            total_holding_period = sum(rate['years'] for rate in interest_rates)
+            # Display calculated holding period
+            st.markdown(f"Expected Holding Period (Years): **{total_holding_period}**")
+        else:
+            # Allow manual input for holding period
+            total_holding_period = int(st.number_input(
+                "Expected Holding Period (Years)",
+                min_value=1,
+                max_value=100,
+                value=30,
+                help="Enter your desired holding period"
+            ))
 
     with col2:
         st.subheader("Income Analysis")
@@ -182,7 +195,7 @@ def show():
 
     # Calculate initial mortgage details
     metrics = calculate_investment_metrics(
-        purchase_price, down_payment_pct, interest_rates, holding_period,
+        purchase_price, down_payment_pct, interest_rates, total_holding_period,
         monthly_rent, annual_rent_increase, {'property_tax': 3000, 'insurance': 1200, 'utilities': 0, 'mgmt_fee': 200, 'hoa_fees': 0}, vacancy_rate
     )
     monthly_payments = metrics['monthly_payments']
@@ -435,7 +448,7 @@ def show():
         ))
 
     # Calculate future values and IRR for each scenario
-    years = list(range(holding_period + 1))
+    years = list(range(total_holding_period + 1))
     
     # Calculate loan amortization to track principal paid
     loan_schedule = []
@@ -453,7 +466,7 @@ def show():
     
     # Calculate annual cash flows with rent increase and expense inflation
     annual_cash_flows = []
-    for year in range(holding_period):
+    for year in range(total_holding_period):
         # Calculate rent for this year with annual increase
         year_monthly_rent = monthly_rent * (1 + annual_rent_increase/100)**year
         year_monthly_income = year_monthly_rent + other_income
@@ -494,7 +507,7 @@ def show():
     moderate_equity = []
     optimistic_equity = []
     
-    for year in range(holding_period + 1):
+    for year in range(total_holding_period + 1):
         # Base equity is down payment + principal paid - closing costs
         base_equity = down_payment_amount + sum([loan['Principal'] for loan in loan_schedule[:year*12]]) - closing_costs['total']
         
@@ -583,7 +596,7 @@ def show():
     
     # Add trace for cash flows
     fig.add_trace(go.Bar(
-        x=list(range(1, holding_period + 1)),
+        x=list(range(1, total_holding_period + 1)),
         y=annual_cash_flows,
         name='Annual Cash Flow',
         yaxis="y2",
@@ -735,7 +748,7 @@ def show():
         yearly_tax_data = []
         
         # Calculate yearly values
-        for year in range(holding_period):
+        for year in range(total_holding_period):
             # Calculate rental income for this year with annual increases
             year_monthly_rent = monthly_rent * (1 + annual_rent_increase/100)**year
             year_monthly_income = year_monthly_rent + other_income
@@ -860,9 +873,9 @@ def show():
         yearly_equity.append(yearly_principal)
 
     # Summary metrics for the holding period
-    total_equity_buildup = sum(yearly_equity[:holding_period])
+    total_equity_buildup = sum(yearly_equity[:total_holding_period])
     total_cash_flow = sum(metrics['annual_cash_flows'])
-    average_annual_cash_flow = total_cash_flow / holding_period
+    average_annual_cash_flow = total_cash_flow / total_holding_period
     
     summary_col1, summary_col2, summary_col3 = st.columns(3)
     
@@ -893,7 +906,7 @@ def show():
     
     with st.expander("View Detailed Yearly Breakdown"):
         yearly_data = []
-        for year in range(holding_period):
+        for year in range(total_holding_period):
             # Calculate values for this year
             year_monthly_rent = monthly_rent * (1 + annual_rent_increase/100)**year
             year_monthly_income = year_monthly_rent + other_income

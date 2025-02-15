@@ -41,6 +41,12 @@ def calculate_loan_details(price: float, down_payment_pct: float, interest_rates
     if not interest_rates:
         return [0] * (loan_years * 12), loan_amount
         
+    # Calculate total years from interest rate periods
+    total_rate_years = sum(years for _, years in interest_rates)
+
+    # Adjust loan_years to match total_rate_years
+    loan_years = total_rate_years
+    
     total_months = loan_years * 12
     monthly_payments = []
     remaining_principal = loan_amount
@@ -191,6 +197,12 @@ def calculate_investment_metrics(purchase_price: float, down_payment_pct: float,
     # Convert interest rates to tuple for caching
     rates_tuple = tuple((rate['rate'], rate['years']) for rate in interest_rates)
     
+    # Calculate total years from interest rate periods
+    total_rate_years = sum(rate['years'] for rate in interest_rates)
+
+    # Adjust holding_period to match total_rate_years
+    holding_period = total_rate_years
+
     # Get mortgage details
     monthly_payments, loan_amount = calculate_loan_details(
         purchase_price, down_payment_pct, rates_tuple, holding_period
