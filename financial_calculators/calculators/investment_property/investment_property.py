@@ -4,6 +4,8 @@ from typing import List, Dict, Tuple
 import streamlit as st
 from functools import lru_cache
 import numpy_financial as npf
+import os
+import pandas as pd
 
 # Use relative imports
 from utils.financial_calculator import FinancialCalculator
@@ -25,7 +27,7 @@ def show():
     """Main function to display the investment property calculator."""
     
     # Check if we're in deployment environment
-    is_deployed = False  # Set to False for testing
+    is_deployed = os.getenv('DEPLOYMENT_ENV') == 'production'
     
     st.title("Investment Property Calculator")
     st.write("Evaluate potential real estate investments and analyze their financial performance")
@@ -643,7 +645,6 @@ def show():
         })
     
     # Create a DataFrame for the loan schedule
-    import pandas as pd
     df_loan = pd.DataFrame(loan_schedule)
 
     # Income Tax Analysis
@@ -827,39 +828,6 @@ def show():
         
         df_tax = pd.DataFrame(yearly_tax_data)
         st.dataframe(df_tax, use_container_width=True)
-        
-        # Create a line chart showing the progression of after-tax income
-        fig = go.Figure()
-        
-        # Extract numeric values from formatted strings
-        employment_after_tax = [float(row['Employment After-Tax'].replace('$', '').replace(',', '')) 
-                              for row in yearly_tax_data]
-        total_after_tax = [float(row['Total After-Tax'].replace('$', '').replace(',', '')) 
-                          for row in yearly_tax_data]
-        years = [row['Year'] for row in yearly_tax_data]
-        
-        fig.add_trace(go.Scatter(
-            x=years,
-            y=employment_after_tax,
-            name='Employment Only',
-            line=dict(color='blue')
-        ))
-        
-        fig.add_trace(go.Scatter(
-            x=years,
-            y=total_after_tax,
-            name='With Rental Income',
-            line=dict(color='green')
-        ))
-        
-        fig.update_layout(
-            title='After-Tax Income Over Time',
-            xaxis_title='Year',
-            yaxis_title='After-Tax Income ($)',
-            hovermode='x unified'
-        )
-        
-        st.plotly_chart(fig, use_container_width=True)
 
     # Cash Flow Analysis
     st.subheader("Cash Flow Analysis")
@@ -958,6 +926,183 @@ def show():
         
         df = pd.DataFrame(yearly_data)
         st.dataframe(df, use_container_width=True)
+
+    # Add a detailed data summary section - only show in non-production environment
+    if not is_deployed:
+        st.subheader("Detailed Data Summary")
+        with st.expander("Click to view all inputs and calculated values"):
+            st.markdown("### Property Details")
+            property_details = {
+                "Purchase Price": f"${purchase_price:,.2f}",
+                "Down Payment": f"${down_payment_amount:,.2f}",
+                "Loan Amount": f"${loan_amount:,.2f}",
+            }
+            
+            # Add all interest rates
+            for i, rate in enumerate(interest_rates, 1):
+                property_details[f"Interest Rate {i}"] = f"{rate['rate']:.2f}% for {rate['years']} years"
+            
+            # Continue with other property details
+            property_details.update({
+                "Annual Property Tax": f"${property_tax:,.2f}",
+                "Monthly HOA": f"${hoa_fees:,.2f}",
+                "Monthly Insurance": f"${insurance/12:,.2f}",
+                "Monthly Utilities": f"${utilities:,.2f}",
+                "Monthly Maintenance": f"${monthly_maintenance:,.2f}",
+                "Vacancy Rate": f"{vacancy_rate:.1f}%",
+                "Property Management Fee": f"{mgmt_fee:.2f}",
+                "Rental Income": f"${monthly_rent:,.2f}",
+                "Total Holding Period": f"{total_holding_period} years"
+            })
+            
+            st.table(pd.DataFrame(list(property_details.items()), columns=['Item', 'Value']))
+            
+            st.markdown("### Key Metrics")
+            key_metrics = {
+                "Monthly Payment": f"${monthly_payments[0]:,.2f}",
+                "Total Monthly Expenses": f"${monthly_operating_expenses:,.2f}",
+                "Monthly Cash Flow": f"${monthly_cash_flow:,.2f}",
+                "Annual Cash Flow": f"${monthly_cash_flow * 12:,.2f}",
+                "Cash on Cash Return": f"{cash_on_cash:.2f}%",
+                "Cap Rate": f"{cap_rate:.2f}%",
+                "Total Equity Buildup": f"${total_equity_buildup:,.2f}",
+                "Total Cash Flow": f"${total_cash_flow:,.2f}",
+                "Average Annual Cash Flow": f"${average_annual_cash_flow:,.2f}"
+            }
+            
+            st.table(pd.DataFrame(list(key_metrics.items()), columns=['Metric', 'Value']))
+            
+            st.markdown("### Appreciation Scenarios")
+            appreciation_scenarios = {
+                "Conservative Growth Rate": f"{conservative_rate:.1f}%",
+                "Moderate Growth Rate": f"{moderate_rate:.1f}%",
+                "Optimistic Growth Rate": f"{optimistic_rate:.1f}%"
+            }
+            
+            st.table(pd.DataFrame(list(appreciation_scenarios.items()), columns=['Scenario', 'Rate']))
+            
+            st.markdown("### Monthly Expense Breakdown")
+            monthly_expenses = {
+                "Principal and Interest": f"${monthly_payments[0]:,.2f}",
+                "Property Tax": f"${property_tax/12:,.2f}",
+                "Insurance": f"${insurance/12:,.2f}",
+                "HOA": f"${hoa_fees:,.2f}",
+                "Utilities": f"${utilities:,.2f}",
+                "Maintenance": f"${monthly_maintenance:,.2f}",
+                "Property Management": f"${mgmt_fee:,.2f}",
+                "Vacancy Cost": f"${monthly_vacancy_loss:,.2f}"
+            }
+            
+            st.table(pd.DataFrame(list(monthly_expenses.items()), columns=['Expense', 'Amount']))
+
+            # Income and Property Value Projections
+            st.markdown("### Income and Property Value Projections")
+            income_df = pd.DataFrame([{
+                'Year': data['Year'],
+                'Rental Income': data['Rental Income'],
+                'Cash Flow': data['Cash Flow'],
+                'Equity': data['Equity'],
+                'Conservative Value': data['Conservative Value'],
+                'Moderate Value': data['Moderate Value'],
+                'Optimistic Value': data['Optimistic Value']
+            } for data in yearly_data])
+            st.dataframe(income_df, use_container_width=True)
+
+            # Yearly Expense Breakdown
+            st.markdown("### Yearly Expense Breakdown")
+            expenses_df = pd.DataFrame([{
+                'Year': data['Year'],
+                'Property Tax': data['Property Tax'],
+                'Insurance': data['Insurance'],
+                'Utilities': data['Utilities'],
+                'Management Fee': data['Management Fee'],
+                'Maintenance': data['Maintenance'],
+                'HOA Fees': data['HOA Fees'],
+                'Principal Paid': data['Principal Paid'],
+                'Interest Paid': data['Interest Paid']
+            } for data in yearly_data])
+            st.dataframe(expenses_df, use_container_width=True)
+            
+            # Add download button
+            summary_text = format_summary_data(
+                property_details, 
+                key_metrics, 
+                appreciation_scenarios, 
+                monthly_expenses,
+                yearly_data
+            )
+            st.download_button(
+                label="Download Summary",
+                data=summary_text,
+                file_name="investment_property_analysis.txt",
+                mime="text/plain"
+            )
+
+def format_summary_data(property_details, key_metrics, appreciation_scenarios, monthly_expenses, yearly_data):
+    """Format all summary data into a nice text format for downloading."""
+    summary = []
+    
+    summary.append("INVESTMENT PROPERTY ANALYSIS SUMMARY")
+    summary.append("=" * 40 + "\n")
+    
+    summary.append("PROPERTY DETAILS")
+    summary.append("-" * 20)
+    for item, value in property_details.items():
+        summary.append(f"{item}: {value}")
+    summary.append("")
+    
+    summary.append("KEY METRICS")
+    summary.append("-" * 20)
+    for metric, value in key_metrics.items():
+        summary.append(f"{metric}: {value}")
+    summary.append("")
+    
+    summary.append("APPRECIATION SCENARIOS")
+    summary.append("-" * 20)
+    for scenario, rate in appreciation_scenarios.items():
+        summary.append(f"{scenario}: {rate}")
+    summary.append("")
+    
+    summary.append("MONTHLY EXPENSE BREAKDOWN")
+    summary.append("-" * 20)
+    for expense, amount in monthly_expenses.items():
+        summary.append(f"{expense}: {amount}")
+    summary.append("")
+    
+    summary.append("YEARLY BREAKDOWN")
+    summary.append("-" * 20)
+    summary.append("\nYear  Rental Income    Cash Flow    Equity    Conservative    Moderate    Optimistic")
+    summary.append("-" * 85)
+    
+    for data in yearly_data:
+        year = data['Year']
+        rental = data['Rental Income']
+        cash_flow = data['Cash Flow']
+        equity = data['Equity']
+        cons_value = data['Conservative Value']
+        mod_value = data['Moderate Value']
+        opt_value = data['Optimistic Value']
+        
+        summary.append(f"{year:<6}{rental:<16}{cash_flow:<12}{equity:<10}{cons_value:<16}{mod_value:<12}{opt_value}")
+    
+    summary.append("\nDETAILED YEARLY EXPENSES")
+    summary.append("-" * 25)
+    summary.append("\nYear  Property Tax  Insurance  Utilities  Management  Maintenance  HOA  Principal  Interest")
+    summary.append("-" * 95)
+    
+    for data in yearly_data:
+        year = data['Year']
+        tax = data['Property Tax']
+        insurance = data['Insurance']
+        utilities = data['Utilities']
+        mgmt = data['Management Fee']
+        maint = data['Maintenance']
+        hoa = data['HOA Fees']
+        principal = data['Principal Paid']
+        interest = data['Interest Paid']
+        
+        summary.append(f"{year:<6}{tax:<14}{insurance:<11}{utilities:<11}{mgmt:<13}{maint:<13}{hoa:<6}{principal:<11}{interest}")    
+    return "\n".join(summary)
 
 def main():
     show()
