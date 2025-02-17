@@ -11,7 +11,7 @@ import streamlit as st
 # Function to calculate loan details
 
 @lru_cache(maxsize=128)
-def calculate_loan_details(price: float, down_payment_pct: float, interest_rates: Tuple[Tuple[float, int], ...], loan_years: int) -> Tuple[List[float], float]:
+def calculate_loan_details(price: float, down_payment_pct: float, interest_rates: Tuple[Tuple[float, int, float], ...], loan_years: int) -> Tuple[List[float], float]:
     """
     Calculate monthly mortgage payments and loan amount with variable interest rates.
     Uses vectorized operations and caching for improved performance.
@@ -19,7 +19,7 @@ def calculate_loan_details(price: float, down_payment_pct: float, interest_rates
     Args:
         price: Property purchase price
         down_payment_pct: Down payment percentage
-        interest_rates: Tuple of tuples containing (rate, years) for immutability in caching
+        interest_rates: Tuple of tuples containing (rate, years, one_time_payment) for immutability in caching
         loan_years: Total loan term in years
     
     Returns:
@@ -31,18 +31,20 @@ def calculate_loan_details(price: float, down_payment_pct: float, interest_rates
         raise ValueError("Down payment percentage must be between 0 and 100")
     if loan_years <= 0:
         raise ValueError("Loan term must be positive")
-    for rate, years in interest_rates:
+    for rate, years, one_time_payment in interest_rates:
         if rate < 0:
             raise ValueError("Interest rate cannot be negative")
         if years <= 0:
             raise ValueError("Rate period must be positive")
+        if one_time_payment < 0:
+            raise ValueError("One-time payment cannot be negative")
 
     loan_amount = price * (1 - down_payment_pct / 100)
     if not interest_rates:
         return [0] * (loan_years * 12), loan_amount
         
     # Calculate total years from interest rate periods
-    total_rate_years = sum(years for _, years in interest_rates)
+    total_rate_years = sum(years for _, years, _ in interest_rates)
 
     # Adjust loan_years to match total_rate_years
     loan_years = total_rate_years
@@ -52,9 +54,16 @@ def calculate_loan_details(price: float, down_payment_pct: float, interest_rates
     remaining_principal = loan_amount
     current_month = 0
     
-    for rate, years in interest_rates:
+    for rate, years, one_time_payment in interest_rates:
         if current_month >= total_months or remaining_principal <= 0:
             break
+            
+        # Apply one-time payment at the start of the period
+        remaining_principal = max(0, remaining_principal - one_time_payment)
+        if remaining_principal <= 0:
+            monthly_payments.extend([0] * (years * 12))
+            current_month += years * 12
+            continue
             
         # Calculate months for this period
         period_months = min(years * 12, total_months - current_month)
@@ -161,7 +170,7 @@ def calculate_tax_brackets(annual_salary: float) -> Dict[str, float]:
 
 def get_rate_for_month(rates, month):
     total_months = 0
-    for rate, years in rates:
+    for rate, years, _ in rates:
         total_months += years * 12
         if month < total_months:
             return rate
@@ -195,10 +204,10 @@ def calculate_investment_metrics(purchase_price: float, down_payment_pct: float,
             raise ValueError("Rate period must be positive")
 
     # Convert interest rates to tuple for caching
-    rates_tuple = tuple((rate['rate'], rate['years']) for rate in interest_rates)
+    rates_tuple = tuple((rate['rate'], rate['years'], rate.get('one_time_payment', 0)) for rate in interest_rates)
     
     # Calculate total years from interest rate periods
-    total_rate_years = sum(rate['years'] for rate in interest_rates)
+    total_rate_years = sum(years for _, years, _ in rates_tuple)
 
     # Adjust holding_period to match total_rate_years
     holding_period = total_rate_years
