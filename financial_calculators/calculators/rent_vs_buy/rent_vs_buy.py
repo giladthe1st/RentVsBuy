@@ -1,6 +1,6 @@
 import os
 import streamlit as st
-from ui.input_handler import InputHandler
+from ui.ui_handlers.rent_vs_buy_ui_handler import RentVsBuyUIHandler
 from ui.results_visualizer import ResultsVisualizer
 from utils.financial_calculator import FinancialCalculator
 from utils.constants import DEFAULT_VALUES
@@ -39,7 +39,7 @@ def show():
 
     # Purchase inputs in left column
     with col1:
-        purchase_params = InputHandler.create_purchase_inputs()
+        purchase_params = RentVsBuyUIHandler.create_purchase_inputs()
 
         # Calculate and display initial mortgage details
         loan_amount = purchase_params.house_price * (1 - purchase_params.down_payment_pct/100)

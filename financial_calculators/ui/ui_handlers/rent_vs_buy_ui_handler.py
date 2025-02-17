@@ -1,12 +1,10 @@
-# ui/input_handler.py
-
 import streamlit as st
 from typing import Tuple
-from models.data_models import PurchaseScenarioParams, RentalScenarioParams, Utilities, UtilityData
-from utils.constants import DEFAULT_VALUES, CLOSING_COSTS, CLOSING_COSTS_INFO_URL
+from models.data_models import PurchaseScenarioParams, RentalScenarioParams
+from utils.constants import DEFAULT_VALUES, CLOSING_COSTS_INFO_URL
 from utils.financial_calculator import FinancialCalculator
 
-class InputHandler:
+class RentVsBuyUIHandler:
     @staticmethod
     def create_purchase_inputs() -> PurchaseScenarioParams:
         """Create and handle purchase scenario inputs"""
@@ -139,7 +137,7 @@ class InputHandler:
             key="purchase_investment_return"
         )
 
-        utilities_data = InputHandler._create_utilities_inputs("Purchase")
+        utilities_data = RentVsBuyUIHandler._create_utilities_inputs("Purchase")
 
         # Calculate total monthly expenses
         loan_amount = house_price * (1 - down_payment/100)
@@ -277,7 +275,7 @@ class InputHandler:
             key="rental_investment_return"
         )
 
-        utilities_data = InputHandler._create_utilities_inputs("Rental")
+        utilities_data = RentVsBuyUIHandler._create_utilities_inputs("Rental")
 
         # Calculate total monthly expenses
         monthly_utilities = (utilities_data.electricity.base + utilities_data.water.base + utilities_data.other.base)
