@@ -11,6 +11,7 @@ import pandas as pd
 from utils.financial_calculator import FinancialCalculator
 from calculators.investment_property.loan_calculations import calculate_monthly_payment, calculate_remaining_balance
 from calculators.investment_property.investment_metrics import calculate_loan_details, calculate_noi, calculate_cap_rate, calculate_coc_return, calculate_irr, calculate_tax_brackets, calculate_investment_metrics
+from ui.investment_property_ui_handler import InvestmentPropertyUIHandler
 
 @lru_cache(maxsize=128)
 def get_rate_for_month(interest_rates: Tuple[Tuple[float, int], ...], month: int) -> float:
@@ -39,20 +40,11 @@ def show():
         st.subheader("Property Details")
         
         # Property type selection
-        property_type = st.selectbox(
-            "Property Type",
-            ["Single Family", "Multi-Family", "Condo"],
-            help="Select the type of property you're analyzing"
-        )
+        ui_handler = InvestmentPropertyUIHandler()
+        # property_type = ui_handler.get_property_type()
         
         # Purchase details
-        purchase_price = float(st.number_input(
-            "Purchase Price ($)",
-            min_value=0,
-            value=300000,
-            step=1000,
-            help="Enter the total purchase price of the property"
-        ))
+        purchase_price = ui_handler.get_purchase_price()
         
         # Calculate and display closing costs
         closing_costs = FinancialCalculator.calculate_closing_costs(purchase_price)
@@ -70,52 +62,14 @@ def show():
             [Learn more about closing costs](https://www.example.com/closing-costs-info)
             """)
         
-        down_payment_pct = float(st.number_input(
-            "Down Payment (%)",
-            min_value=0.0,
-            max_value=100.0,
-            value=20.0,
-            step=1.0,
-            help="Percentage of purchase price as down payment"
-        ))
+        down_payment_pct = ui_handler.get_down_payment_pct()
         down_payment_amount = purchase_price * (down_payment_pct / 100)
         st.markdown(f"Down Payment Amount: **${down_payment_amount:,.2f}**")
         
-        interest_rates = []
-        num_rate_periods = int(st.number_input(
-            "Number of Interest Rate Periods",
-            min_value=1,
-            max_value=10,
-            value=1,
-            help="Number of interest rate periods for the mortgage"
-        ))
-        
-        for i in range(num_rate_periods):
-            rate_col1, rate_col2 = st.columns([2, 1])
-            with rate_col1:
-                rate = float(st.number_input(
-                    f"Interest Rate {i+1} (%)",
-                    min_value=0.0,
-                    max_value=20.0,
-                    value=4.0,
-                    step=0.1,
-                    help=f"Annual interest rate for period {i+1}"
-                ))
-            with rate_col2:
-                years = int(st.number_input(
-                    f"Years for Rate {i+1}",
-                    min_value=1,
-                    max_value=40,
-                    value=30,
-                    help=f"Number of years for interest rate {i+1}"
-                ))
-            interest_rates.append({'rate': rate, 'years': years})
+        interest_rates = ui_handler.get_interest_rates()
         
         # Option to use calculated or custom holding period
-        use_calculated_period = st.checkbox(
-            "Use calculated holding period based on interest rate periods",
-            value=True
-        )
+        use_calculated_period = ui_handler.use_calculated_holding_period()
 
         if use_calculated_period:
             # Calculate total holding period from interest rate periods
@@ -123,14 +77,7 @@ def show():
             # Display calculated holding period
             st.markdown(f"Expected Holding Period (Years): **{total_holding_period}**")
         else:
-            # Allow manual input for holding period
-            total_holding_period = int(st.number_input(
-                "Expected Holding Period (Years)",
-                min_value=1,
-                max_value=100,
-                value=30,
-                help="Enter your desired holding period"
-            ))
+            total_holding_period = ui_handler.get_custom_holding_period()
 
     with col2:
         st.subheader("Income Analysis")
@@ -140,65 +87,76 @@ def show():
         
         with salary_col1:
             # Annual salary input
-            annual_salary = float(st.number_input(
-                "Annual Salary ($)",
-                min_value=0,
-                value=80000,
-                step=1000,
-                help="Enter your annual salary for tax calculation"
-            ))
+            annual_salary = ui_handler.get_annual_salary()
         
         with salary_col2:
-            salary_inflation = float(st.number_input(
-                "Annual Increase (%)",
-                min_value=0.0,
-                max_value=20.0,
-                value=3.0,
-                step=0.1,
-                help="Expected annual percentage increase in salary"
-            ))
+            salary_inflation = ui_handler.get_salary_inflation()
         
         # Create columns for rent and its increase rate
         rent_col1, rent_col2 = st.columns([2, 1])
         
         with rent_col1:
-            monthly_rent = float(st.number_input(
-                "Expected Monthly Rent ($)",
-                min_value=0,
-                value=2000,
-                step=100,
-                help="Enter the expected monthly rental income"
-            ))
+            monthly_rent = ui_handler.get_monthly_rent()
         
         with rent_col2:
-            annual_rent_increase = float(st.number_input(
-                "Annual Increase (%)",
-                min_value=0,
-                max_value=10,
-                value=3,
-                help="Expected annual percentage increase in rental income"
-            ))
+            annual_rent_increase = ui_handler.get_annual_rent_increase()
         
-        other_income = float(st.number_input(
-            "Other Monthly Income ($)",
-            min_value=0,
-            value=0,
-            step=50,
-            help="Additional income from parking, laundry, storage, etc."
-        ))
+        other_income = ui_handler.get_other_income()
         
-        vacancy_rate = float(st.number_input(
-            "Vacancy Rate (%)",
-            min_value=0,
-            max_value=20,
-            value=5,
-            help="Expected percentage of time the property will be vacant"
-        ))
+        vacancy_rate = ui_handler.get_vacancy_rate()
+
+    # Operating Expenses Section
+    st.subheader("Operating Expenses")
+    
+    # Property Tax
+    tax_col1, tax_col2 = st.columns(2)
+    with tax_col1:
+        property_tax = ui_handler.get_property_tax(purchase_price)
+    with tax_col2:
+        property_tax_inflation = ui_handler.get_property_tax_inflation()
+
+    # Insurance
+    ins_col1, ins_col2 = st.columns(2)
+    with ins_col1:
+        insurance = ui_handler.get_annual_insurance(purchase_price)
+    with ins_col2:
+        insurance_inflation = ui_handler.get_insurance_inflation()
+
+    # Utilities
+    util_col1, util_col2 = st.columns(2)
+    with util_col1:
+        utilities = ui_handler.get_monthly_utilities()
+    with util_col2:
+        utilities_inflation = ui_handler.get_utilities_inflation()
+
+    # Management Fee
+    mgmt_col1, mgmt_col2 = st.columns(2)
+    with mgmt_col1:
+        mgmt_fee = ui_handler.get_monthly_mgmt_fee()
+    with mgmt_col2:
+        mgmt_fee_inflation = ui_handler.get_management_inflation()
+
+    # HOA Fees
+    hoa_col1, hoa_col2 = st.columns(2)
+    with hoa_col1:
+        hoa_fees = ui_handler.get_monthly_hoa_fees()
+    with hoa_col2:
+        hoa_inflation = ui_handler.get_hoa_fees_inflation()
+
+    maintenance_pct = ui_handler.get_maintenance_pct(purchase_price)
+
+    # Expense Inputs
+    expenses = {
+        'property_tax': property_tax,
+        'insurance': insurance,
+        'utilities': utilities,
+        'mgmt_fee': mgmt_fee,
+        'hoa_fees': hoa_fees
+    }
 
     # Calculate initial mortgage details
     metrics = calculate_investment_metrics(
-        purchase_price, down_payment_pct, interest_rates, total_holding_period,
-        monthly_rent, annual_rent_increase, {'property_tax': 3000, 'insurance': 1200, 'utilities': 0, 'mgmt_fee': 200, 'hoa_fees': 0}, vacancy_rate
+        purchase_price, down_payment_pct, interest_rates, total_holding_period, monthly_rent, annual_rent_increase, expenses, vacancy_rate
     )
     monthly_payments = metrics['monthly_payments']
     loan_amount = purchase_price * (1 - down_payment_pct / 100)
@@ -207,7 +165,7 @@ def show():
     st.subheader("Initial Mortgage Details")
     mort_col1, mort_col2, mort_col3, mort_col4, mort_col5 = st.columns(5)
     
-    with mort_col1:
+    with mort_col1: 
         st.metric(
             "Loan Amount",
             f"${loan_amount:,.2f}",
@@ -238,106 +196,6 @@ def show():
             help="One-time closing costs for property purchase"
         )
 
-    # Operating Expenses Section
-    st.subheader("Operating Expenses")
-    exp_col1, exp_col2, exp_col3 = st.columns(3)
-
-    with exp_col1:
-        property_tax = float(st.number_input(
-            "Annual Property Tax ($)",
-            min_value=0,
-            value=3000,
-            step=100,
-            help="Annual property tax amount"
-        ))
-        
-        insurance = float(st.number_input(
-            "Annual Insurance ($)",
-            min_value=0,
-            value=1200,
-            step=100,
-            help="Annual property insurance cost"
-        ))
-        
-        utilities = float(st.number_input(
-            "Monthly Utilities ($)",
-            min_value=0,
-            value=0,
-            step=50,
-            help="Monthly utilities cost (if paid by owner)"
-        ))
-        
-        mgmt_fee = float(st.number_input(
-            "Monthly Property Management Fee ($)",
-            min_value=0,
-            value=200,
-            step=50,
-            help="Monthly property management fee"
-        ))
-
-    with exp_col2:
-        maintenance_pct = float(st.number_input(
-            "Maintenance & Repairs (% of property value)",
-            min_value=0.0,
-            max_value=5.0,
-            value=1.0,
-            step=0.1,
-            help="Expected annual maintenance costs as percentage of property value"
-        ))
-        
-        hoa_fees = float(st.number_input(
-            "Monthly HOA Fees ($)",
-            min_value=0,
-            value=0,
-            step=50,
-            help="Monthly HOA or condo fees if applicable"
-        ))
-
-    with exp_col3:
-        property_tax_inflation = float(st.number_input(
-            "Property Tax Annual Increase (%)",
-            min_value=0.0,
-            max_value=10.0,
-            value=2.0,
-            step=0.1,
-            help="Expected annual increase in property tax"
-        ))
-        
-        insurance_inflation = float(st.number_input(
-            "Insurance Annual Increase (%)",
-            min_value=0.0,
-            max_value=10.0,
-            value=3.0,
-            step=0.1,
-            help="Expected annual increase in insurance cost"
-        ))
-        
-        utilities_inflation = float(st.number_input(
-            "Utilities Annual Increase (%)",
-            min_value=0.0,
-            max_value=10.0,
-            value=2.5,
-            step=0.1,
-            help="Expected annual increase in utilities cost"
-        ))
-        
-        mgmt_fee_inflation = float(st.number_input(
-            "Management Fee Annual Increase (%)",
-            min_value=0.0,
-            max_value=10.0,
-            value=2.0,
-            step=0.1,
-            help="Expected annual increase in property management fee"
-        ))
-        
-        hoa_inflation = float(st.number_input(
-            "HOA Fees Annual Increase (%)",
-            min_value=0.0,
-            max_value=10.0,
-            value=3.0,
-            step=0.1,
-            help="Expected annual increase in HOA fees"
-        ))
 
     # Calculate monthly operating expenses
     monthly_maintenance = (purchase_price * (maintenance_pct / 100)) / 12
@@ -420,34 +278,13 @@ def show():
     appreciation_col1, appreciation_col2, appreciation_col3 = st.columns(3)
     
     with appreciation_col1:
-        conservative_rate = float(st.number_input(
-            "Conservative Growth Rate (%)",
-            min_value=0.0,
-            max_value=10.0,
-            value=2.0,
-            step=0.1,
-            help="Annual property value appreciation rate - conservative estimate"
-        ))
+        conservative_rate = ui_handler.get_conservative_rate()
     
     with appreciation_col2:
-        moderate_rate = float(st.number_input(
-            "Moderate Growth Rate (%)",
-            min_value=0.0,
-            max_value=10.0,
-            value=3.5,
-            step=0.1,
-            help="Annual property value appreciation rate - moderate estimate"
-        ))
+        moderate_rate = ui_handler.get_moderate_rate()
     
     with appreciation_col3:
-        optimistic_rate = float(st.number_input(
-            "Optimistic Growth Rate (%)",
-            min_value=0.0,
-            max_value=10.0,
-            value=5.0,
-            step=0.1,
-            help="Annual property value appreciation rate - optimistic estimate"
-        ))
+        optimistic_rate = ui_handler.get_optimistic_rate()
 
     # Calculate future values and IRR for each scenario
     years = list(range(total_holding_period + 1))
@@ -1104,8 +941,5 @@ def format_summary_data(property_details, key_metrics, appreciation_scenarios, m
         summary.append(f"{year:<6}{tax:<14}{insurance:<11}{utilities:<11}{mgmt:<13}{maint:<13}{hoa:<6}{principal:<11}{interest}")    
     return "\n".join(summary)
 
-def main():
-    show()
-
 if __name__ == "__main__":
-    main()
+    show()
