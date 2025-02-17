@@ -65,7 +65,7 @@ class InvestmentPropertyUIHandler:
         ))
         
         for i in range(num_rate_periods):
-            rate_col1, rate_col2 = st.columns([2, 1])
+            rate_col1, rate_col2, rate_col3 = st.columns([2, 1, 2])
             with rate_col1:
                 rate = float(st.number_input(
                     f"Interest Rate {i+1} (%)",
@@ -84,7 +84,15 @@ class InvestmentPropertyUIHandler:
                     step=1,
                     help=f"Number of years for interest rate {i+1}"
                 ))
-            interest_rates.append({'rate': rate, 'years': years})
+            with rate_col3:
+                one_time_payment = float(st.number_input(
+                    f"One-Time Payment {i+1} ($)",
+                    min_value=0.0,
+                    value=0.0,
+                    step=1000.0,
+                    help=f"Optional one-time payment at the start of period {i+1}"
+                ))
+            interest_rates.append({'rate': rate, 'years': years, 'one_time_payment': one_time_payment})
         
         return interest_rates
 

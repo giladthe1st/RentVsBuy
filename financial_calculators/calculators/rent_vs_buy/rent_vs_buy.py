@@ -1,6 +1,6 @@
 import os
 import streamlit as st
-from ui.input_handler import InputHandler
+from ui.rent_vs_buy_ui_handler import InputHandler
 from ui.results_visualizer import ResultsVisualizer
 from utils.financial_calculator import FinancialCalculator
 from utils.constants import DEFAULT_VALUES
