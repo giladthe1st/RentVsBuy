@@ -7,6 +7,7 @@ from functools import lru_cache
 import numpy_financial as npf
 import numpy as np
 import streamlit as st
+import logging
 
 # Function to calculate loan details
 
@@ -124,8 +125,12 @@ def calculate_irr(initial_investment: float, cash_flows: List[float], final_valu
     """Calculate Internal Rate of Return using vectorized operations."""
     if initial_investment < 0:
         raise ValueError("Initial investment cannot be negative")
+    # Ensure final_value is not negative - adding a safety check to handle edge cases
     if final_value < 0:
-        raise ValueError("Final value cannot be negative")
+        # Instead of raising an error, we'll log a warning and set final_value to 0
+        logging.warning(f"Final value is negative: {final_value}. Setting to 0 for IRR calculation.")
+        final_value = 0
+    
     flows = np.array([-initial_investment] + cash_flows + [final_value])
     try:
         result = npf.irr(flows)
