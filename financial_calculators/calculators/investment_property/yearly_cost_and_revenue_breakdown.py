@@ -16,24 +16,16 @@ class YearlyCostAndRevenueBreakdownCalculator:
         other_income: float,
         vacancy_rate: float,
         property_tax: float,
-        property_tax_inflation: float,
+        annual_inflation: float,
         insurance: float,
-        insurance_inflation: float,
         utilities: float,
-        utilities_inflation: float,
         mgmt_fee: float,
-        mgmt_fee_inflation: float,
         monthly_maintenance: float,
         conservative_rate: float,
-        moderate_rate: float,
-        optimistic_rate: float,
         hoa_fees: float,
-        hoa_inflation: float,
         monthly_payments: List[float],
         df_loan: pd.DataFrame,
-        metrics: Dict,
         conservative_equity: List[float],
-        is_deployed: bool = False
     ) -> pd.DataFrame:
         """
         Calculate yearly breakdown of costs and revenues for an investment property.
@@ -46,19 +38,13 @@ class YearlyCostAndRevenueBreakdownCalculator:
             other_income: Additional monthly income
             vacancy_rate: Expected vacancy rate percentage
             property_tax: Annual property tax
-            property_tax_inflation: Annual increase in property tax
+            annual_inflation: Annual increase in expenses
             insurance: Annual insurance cost
-            insurance_inflation: Annual increase in insurance
             utilities: Monthly utilities cost
-            utilities_inflation: Annual increase in utilities
             mgmt_fee: Monthly management fee
-            mgmt_fee_inflation: Annual increase in management fee
             monthly_maintenance: Monthly maintenance cost
             conservative_rate: Conservative growth rate
-            moderate_rate: Moderate growth rate
-            optimistic_rate: Optimistic growth rate
             hoa_fees: Monthly HOA fees
-            hoa_inflation: Annual increase in HOA fees
             monthly_payments: List of monthly mortgage payments
             df_loan: DataFrame containing loan amortization details
             metrics: Dictionary containing calculated metrics
@@ -75,17 +61,15 @@ class YearlyCostAndRevenueBreakdownCalculator:
             year_monthly_income = year_monthly_rent + other_income
             year_monthly_vacancy_loss = year_monthly_income * (vacancy_rate / 100)
             
-            year_property_tax = property_tax * (1 + property_tax_inflation/100)**year
-            year_insurance = insurance * (1 + insurance_inflation/100)**year
-            year_utilities = utilities * (1 + utilities_inflation/100)**year * 12
-            year_mgmt_fee = mgmt_fee * (1 + mgmt_fee_inflation/100)**year * 12
+            year_property_tax = property_tax * (1 + annual_inflation/100)**year
+            year_insurance = insurance * (1 + annual_inflation/100)**year
+            year_utilities = utilities * (1 + annual_inflation/100)**year * 12
+            year_mgmt_fee = mgmt_fee * (1 + annual_inflation/100)**year * 12
             year_maintenance = monthly_maintenance * 12 * (1 + conservative_rate/100)**year
-            year_hoa = hoa_fees * (1 + hoa_inflation/100)**year * 12
+            year_hoa = hoa_fees * (1 + annual_inflation/100)**year * 12
             
             # Calculate property values for each scenario
             conservative_value = purchase_price * (1 + conservative_rate/100)**year
-            moderate_value = purchase_price * (1 + moderate_rate/100)**year
-            optimistic_value = purchase_price * (1 + optimistic_rate/100)**year
             
             # Calculate mortgage components for this year
             if year < len(monthly_payments) // 12:
@@ -119,8 +103,6 @@ class YearlyCostAndRevenueBreakdownCalculator:
                 "Interest Paid": f"${year_interest:,.2f}",
                 "Cash Flow": f"${year_cash_flow:,.2f}",
                 "Conservative Value": f"${conservative_value:,.2f}",
-                "Moderate Value": f"${moderate_value:,.2f}",
-                "Optimistic Value": f"${optimistic_value:,.2f}",
                 "Equity": f"${conservative_equity[year]:,.2f}"
             })
         
@@ -168,9 +150,7 @@ class YearlyCostAndRevenueBreakdownCalculator:
                     'Rental Income': data['Rental Income'],
                     'Cash Flow': data['Cash Flow'],
                     'Equity': data['Equity'],
-                    'Conservative Value': data['Conservative Value'],
-                    'Moderate Value': data['Moderate Value'],
-                    'Optimistic Value': data['Optimistic Value']
+                    'Conservative Value': data['Conservative Value']
                 } for data in yearly_data])
                 st.dataframe(income_df, use_container_width=True)
 
@@ -256,7 +236,7 @@ class YearlyCostAndRevenueBreakdownCalculator:
         
         summary.append("YEARLY BREAKDOWN")
         summary.append("-" * 20)
-        summary.append("\nYear  Rental Income    Cash Flow    Equity    Conservative    Moderate    Optimistic")
+        summary.append("\nYear  Rental Income    Cash Flow    Equity    Conservative")
         summary.append("-" * 85)
         
         for data in yearly_data:
@@ -265,10 +245,8 @@ class YearlyCostAndRevenueBreakdownCalculator:
             cash_flow = data['Cash Flow']
             equity = data['Equity']
             cons_value = data['Conservative Value']
-            mod_value = data['Moderate Value']
-            opt_value = data['Optimistic Value']
             
-            summary.append(f"{year:<6}{rental:<16}{cash_flow:<12}{equity:<10}{cons_value:<16}{mod_value:<12}{opt_value}")
+            summary.append(f"{year:<6}{rental:<16}{cash_flow:<12}{equity:<10}{cons_value:<16}")
         
         summary.append("\nDETAILED YEARLY EXPENSES")
         summary.append("-" * 25)

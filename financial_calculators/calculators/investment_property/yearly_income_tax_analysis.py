@@ -16,17 +16,13 @@ class YearlyTaxBreakdownCalculator:
         other_income: float,
         vacancy_rate: float,
         property_tax: float,
-        property_tax_inflation: float,
+        annual_inflation: float,
         insurance: float,
-        insurance_inflation: float,
         utilities: float,
-        utilities_inflation: float,
         mgmt_fee: float,
-        mgmt_fee_inflation: float,
         monthly_maintenance: float,
         conservative_rate: float,
         hoa_fees: float,
-        hoa_inflation: float,
         monthly_payments: List[float],
         df_loan: pd.DataFrame,
         annual_salary: float,
@@ -43,17 +39,13 @@ class YearlyTaxBreakdownCalculator:
             other_income: Additional monthly income
             vacancy_rate: Expected vacancy rate percentage
             property_tax: Annual property tax
-            property_tax_inflation: Annual increase in property tax
+            annual_inflation: Annual increase in expenses
             insurance: Annual insurance cost
-            insurance_inflation: Annual increase in insurance
             utilities: Monthly utilities cost
-            utilities_inflation: Annual increase in utilities
             mgmt_fee: Monthly management fee
-            mgmt_fee_inflation: Annual increase in management fee
             monthly_maintenance: Monthly maintenance cost
             conservative_rate: Conservative growth rate for maintenance
             hoa_fees: Monthly HOA fees
-            hoa_inflation: Annual increase in HOA fees
             monthly_payments: List of monthly mortgage payments
             df_loan: DataFrame containing loan amortization details
             annual_salary: Annual employment salary
@@ -74,12 +66,12 @@ class YearlyTaxBreakdownCalculator:
             year_rental_income = (year_monthly_income - year_monthly_vacancy_loss) * 12
             
             # Calculate expenses for this year
-            year_property_tax = property_tax * (1 + property_tax_inflation/100)**year
-            year_insurance = insurance * (1 + insurance_inflation/100)**year
-            year_utilities = utilities * (1 + utilities_inflation/100)**year * 12
-            year_mgmt_fee = mgmt_fee * (1 + mgmt_fee_inflation/100)**year * 12
+            year_property_tax = property_tax * (1 + annual_inflation/100)**year
+            year_insurance = insurance * (1 + annual_inflation/100)**year
+            year_utilities = utilities * (1 + annual_inflation/100)**year * 12
+            year_mgmt_fee = mgmt_fee * (1 + annual_inflation/100)**year * 12
             year_maintenance = monthly_maintenance * 12 * (1 + conservative_rate/100)**year
-            year_hoa = hoa_fees * (1 + hoa_inflation/100)**year * 12
+            year_hoa = hoa_fees * (1 + annual_inflation/100)**year * 12
             
             # Calculate mortgage components for this year
             if year < len(monthly_payments) // 12 and year * 12 < len(df_loan):
@@ -90,7 +82,6 @@ class YearlyTaxBreakdownCalculator:
                 months_in_year = end_idx - start_idx
                 year_mortgage = monthly_payments[start_idx] * months_in_year
             else:
-                year_interest = 0
                 year_mortgage = 0
             
             # Calculate operating expenses

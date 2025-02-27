@@ -91,7 +91,7 @@ def show():
             annual_salary = ui_handler.get_annual_salary()
         
         with salary_col2:
-            salary_inflation = ui_handler.get_salary_inflation()
+            annual_inflation = ui_handler.get_annual_inflation()
         
         # Create columns for rent and its increase rate
         rent_col1, rent_col2 = st.columns([2, 1])
@@ -113,38 +113,30 @@ def show():
     tax_col1, tax_col2 = st.columns(2)
     with tax_col1:
         property_tax = ui_handler.get_property_tax(purchase_price)
-    with tax_col2:
-        property_tax_inflation = ui_handler.get_property_tax_inflation()
 
     # Insurance
     ins_col1, ins_col2 = st.columns(2)
     with ins_col1:
         insurance = ui_handler.get_annual_insurance(purchase_price)
-    with ins_col2:
-        insurance_inflation = ui_handler.get_insurance_inflation()
 
     # Utilities
     util_col1, util_col2 = st.columns(2)
     with util_col1:
         utilities = ui_handler.get_monthly_utilities()
-    with util_col2:
-        utilities_inflation = ui_handler.get_utilities_inflation()
 
     # Management Fee
     mgmt_col1, mgmt_col2 = st.columns(2)
     with mgmt_col1:
         mgmt_fee = ui_handler.get_monthly_mgmt_fee()
-    with mgmt_col2:
-        mgmt_fee_inflation = ui_handler.get_management_inflation()
 
     # HOA Fees
     hoa_col1, hoa_col2 = st.columns(2)
     with hoa_col1:
         hoa_fees = ui_handler.get_monthly_hoa_fees()
-    with hoa_col2:
-        hoa_inflation = ui_handler.get_hoa_fees_inflation()
 
-    maintenance_pct = ui_handler.get_maintenance_pct(purchase_price)
+    maintenance_col1, maintenance_col2 = st.columns(2)
+    with maintenance_col1:
+        maintenance_pct = ui_handler.get_maintenance_pct(purchase_price)
 
     # Expense Inputs
     expenses = {
@@ -282,10 +274,10 @@ def show():
         conservative_rate = ui_handler.get_conservative_rate()
     
     with appreciation_col2:
-        moderate_rate = ui_handler.get_moderate_rate()
+        pass
     
     with appreciation_col3:
-        optimistic_rate = ui_handler.get_optimistic_rate()
+        pass
 
     # Calculate future values and IRR for each scenario
     years = list(range(total_holding_period + 1))
@@ -293,15 +285,39 @@ def show():
     # Calculate loan amortization to track principal paid
     loan_schedule = []
     remaining_balance = loan_amount
+    applied_one_time_payments = []
+    
+    # Pre-process to track when one-time payments are applied
+    month_count = 0
+    for rate_info in interest_rates:
+        rate_months = rate_info['years'] * 12
+        one_time_payment = rate_info.get('one_time_payment', 0)
+        if one_time_payment > 0:
+            applied_one_time_payments.append((month_count, one_time_payment))
+        month_count += rate_months
+    
     for month in range(len(monthly_payments)):
+        # Check if there's a one-time payment for this month
+        one_time_payment = 0
+        for payment_month, payment_amount in applied_one_time_payments:
+            if month == payment_month:
+                one_time_payment = payment_amount
+                break
+        
         current_rate = get_rate_for_month(tuple((rate['rate'], rate['years']) for rate in interest_rates), month)
         interest_payment = remaining_balance * (current_rate / (12 * 100))
         principal_payment = monthly_payments[month] - interest_payment
+        
+        # Add one-time payment to principal payment for this month
+        if one_time_payment > 0:
+            principal_payment += one_time_payment
+            
         remaining_balance -= principal_payment
         loan_schedule.append({
             'Principal': principal_payment,
             'Interest': interest_payment,
-            'Balance': remaining_balance
+            'Balance': remaining_balance,
+            'OneTimePayment': one_time_payment
         })
     
     # Calculate annual cash flows with rent increase and expense inflation
@@ -315,12 +331,12 @@ def show():
         year_effective_income = year_effective_income * 12
         
         # Calculate inflated expenses for this year
-        year_property_tax = property_tax * (1 + property_tax_inflation/100)**year
-        year_insurance = insurance * (1 + insurance_inflation/100)**year
-        year_utilities = utilities * (1 + utilities_inflation/100)**year * 12
-        year_mgmt_fee = mgmt_fee * (1 + mgmt_fee_inflation/100)**year * 12
+        year_property_tax = property_tax * (1 + annual_inflation/100)**year
+        year_insurance = insurance * (1 + annual_inflation/100)**year
+        year_utilities = utilities * (1 + annual_inflation/100)**year * 12
+        year_mgmt_fee = mgmt_fee * (1 + annual_inflation/100)**year * 12
         year_maintenance = monthly_maintenance * 12 * (1 + conservative_rate/100)**year  # Maintenance increases with property value
-        year_hoa = hoa_fees * (1 + hoa_inflation/100)**year * 12
+        year_hoa = hoa_fees * (1 + annual_inflation/100)**year * 12
         
         # Calculate total expenses for this year
         year_expenses = (
@@ -344,21 +360,21 @@ def show():
     
     # Initialize arrays for each scenario - now calculating equity value
     conservative_equity = []
-    moderate_equity = []
-    optimistic_equity = []
     
     for year in range(total_holding_period + 1):
         # Base equity is down payment + principal paid - closing costs
-        base_equity = down_payment_amount + sum([loan['Principal'] for loan in loan_schedule[:year*12]]) - closing_costs['total']
+        base_equity = down_payment_amount - closing_costs['total']
+        
+        # Add all principal payments including regular payments and one-time payments
+        if year > 0:  # No principal paid in year 0
+            for month in range(year * 12):
+                if month < len(loan_schedule):
+                    base_equity += loan_schedule[month]['Principal']
         
         # Add appreciation for each scenario
         conservative_appreciation = purchase_price * ((1 + conservative_rate/100)**year - 1)
-        moderate_appreciation = purchase_price * ((1 + moderate_rate/100)**year - 1)
-        optimistic_appreciation = purchase_price * ((1 + optimistic_rate/100)**year - 1)
         
         conservative_equity.append(base_equity + conservative_appreciation)
-        moderate_equity.append(base_equity + moderate_appreciation)
-        optimistic_equity.append(base_equity + optimistic_appreciation)
 
     # Calculate ROI for each scenario
     initial_investment = down_payment_amount + closing_costs['total']  # Include closing costs in initial investment
@@ -367,18 +383,6 @@ def show():
         initial_investment,
         annual_cash_flows,
         conservative_equity[-1]
-    )
-    
-    moderate_roi = calculate_irr(
-        initial_investment,
-        annual_cash_flows,
-        moderate_equity[-1]
-    )
-    
-    optimistic_roi = calculate_irr(
-        initial_investment,
-        annual_cash_flows,
-        optimistic_equity[-1]
     )
 
     # Display IRR metrics
@@ -392,18 +396,10 @@ def show():
         )
     
     with irr_col2:
-        st.metric(
-            "Moderate IRR",
-            f"{moderate_roi:.1f}%",
-            help="Internal Rate of Return assuming moderate appreciation"
-        )
+        pass
     
     with irr_col3:
-        st.metric(
-            "Optimistic IRR",
-            f"{optimistic_roi:.1f}%",
-            help="Internal Rate of Return assuming optimistic appreciation"
-        )
+        pass
 
     # Create visualization
     st.subheader("Property Value and Cash Flow Projections")
@@ -419,20 +415,7 @@ def show():
         name='Conservative Equity',
         line=dict(color="blue", dash="dot")
     ))
-    
-    fig.add_trace(go.Scatter(
-        x=years,
-        y=moderate_equity,
-        name='Moderate Equity',
-        line=dict(color="green")
-    ))
-    
-    fig.add_trace(go.Scatter(
-        x=years,
-        y=optimistic_equity,
-        name='Optimistic Equity',
-        line=dict(color="red", dash="dash")
-    ))
+
     
     # Add trace for cash flows
     fig.add_trace(go.Bar(
@@ -591,21 +574,17 @@ def show():
             other_income=other_income,
             vacancy_rate=vacancy_rate,
             property_tax=property_tax,
-            property_tax_inflation=property_tax_inflation,
+            annual_inflation=annual_inflation,
             insurance=insurance,
-            insurance_inflation=insurance_inflation,
             utilities=utilities,
-            utilities_inflation=utilities_inflation,
             mgmt_fee=mgmt_fee,
-            mgmt_fee_inflation=mgmt_fee_inflation,
             monthly_maintenance=monthly_maintenance,
             conservative_rate=conservative_rate,
             hoa_fees=hoa_fees,
-            hoa_inflation=hoa_inflation,
             monthly_payments=monthly_payments,
             df_loan=df_loan,
             annual_salary=annual_salary,
-            salary_inflation=salary_inflation
+            salary_inflation=annual_inflation
         )
         st.dataframe(df_tax, use_container_width=True)
 
@@ -661,24 +640,16 @@ def show():
             other_income=other_income,
             vacancy_rate=vacancy_rate,
             property_tax=property_tax,
-            property_tax_inflation=property_tax_inflation,
+            annual_inflation=annual_inflation,
             insurance=insurance,
-            insurance_inflation=insurance_inflation,
             utilities=utilities,
-            utilities_inflation=utilities_inflation,
             mgmt_fee=mgmt_fee,
-            mgmt_fee_inflation=mgmt_fee_inflation,
             monthly_maintenance=monthly_maintenance,
             conservative_rate=conservative_rate,
-            moderate_rate=moderate_rate,
-            optimistic_rate=optimistic_rate,
             hoa_fees=hoa_fees,
-            hoa_inflation=hoa_inflation,
             monthly_payments=monthly_payments,
             df_loan=df_loan,
-            metrics=metrics,
             conservative_equity=conservative_equity,
-            is_deployed=is_deployed
         )
         st.dataframe(df, use_container_width=True)
 
@@ -720,9 +691,7 @@ def show():
         }
 
         appreciation_scenarios = {
-            "Conservative Growth Rate": f"{conservative_rate:.1f}%",
-            "Moderate Growth Rate": f"{moderate_rate:.1f}%",
-            "Optimistic Growth Rate": f"{optimistic_rate:.1f}%"
+            "Conservative Growth Rate": f"{conservative_rate:.1f}%"
         }
 
         monthly_expenses = {
